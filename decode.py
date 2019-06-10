@@ -30,7 +30,7 @@ def decode(filename):
             msg = watch_pb2.SensorData()
             msg.ParseFromString(data)
 
-            # Determine what type of message
+            # Convert to human-readable JSON
             result += json_format.MessageToJson(msg) + "\n"
 
     return result
