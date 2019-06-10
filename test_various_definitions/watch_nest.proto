@@ -1,0 +1,73 @@
+/* SensorData is the data collected from the watch sensors.
+ * Label is the human-annotated label.
+ * (Other messages are used in SensorData.)
+ */
+syntax = "proto3";
+
+message xyz {
+    float x = 1; /* g's */
+    float y = 2; /* g's */
+    float z = 3; /* g's */
+}
+
+message Motion {
+    enum Calibration {
+        UNCALIBRATED = 0;
+        LOW = 1;
+        MEDIUM = 2;
+        HIGH = 3;
+    }
+
+    float yaw = 1;      /* rad */
+    float pitch = 2;    /* rad */
+    float roll = 3;     /* rad */
+    xyz rot_rate = 4;   /* rad/s? */
+    float heading = 5;  /* deg (-1 or 0.0-360.0) */
+    xyz user_accel = 6; /* g's */
+    xyz gravity = 7;    /* g's */
+    xyz mag = 8;        /* uT */
+    Calibration mag_calibration_acc = 9;
+}
+
+message GPS {
+    float altitude = 1;  /* m; above sea level */
+    float longitude = 2; /* deg */
+    float latitude = 3;  /* deg */
+    float course = 4;    /* deg; relative to due north */
+    float speed = 5;     /* m/s */
+    float horiz_acc = 6; /* +/- m; if negative, lat/lon invalid */
+    float vert_acc = 7;  /* +/- m; if negative, alt invalid */
+    sint32 floor = 8;     /* floor of building; TODO if it can be negative, use sint32 */
+}
+
+message Battery {
+    enum BatteryState {
+        CHARGING = 0;
+        /* TODO others? */
+    }
+    float level = 1;
+    BatteryState state = 2;
+}
+
+message SensorData {
+    /* Timestamp and seconds since boot are in device motion and acceleration */
+    string timestamp = 1;         /* e.g. 2019-06-07 03:48:06.9980 */
+    float seconds_since_boot = 2;
+
+    /* On the watch, only one of these will be given at a time
+     *
+     * Note: raw_accel is separate from Motion since it's separate on the
+     * Apple watch.
+     */
+    xyz raw_accel = 3; /* g's */
+    Motion motion = 4;
+    GPS gps = 5;
+    Battery bat = 6;
+}
+
+message Label {
+    string timestamp = 1; /* e.g. 2019-06-07 03:48:06.9980 */
+    /* TODO could also use enum but then it's harder if they change, probably
+     * infrequent enough string is fine */
+    string label = 2;
+}

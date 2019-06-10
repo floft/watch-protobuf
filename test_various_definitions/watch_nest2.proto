@@ -1,0 +1,79 @@
+/* SensorData is the data collected from the watch sensors.
+ * Label is the human-annotated label. */
+syntax = "proto3";
+
+message Accelerometer {
+    float x = 1; /* g's */
+    float y = 2; /* g's */
+    float z = 3; /* g's */
+}
+
+message Motion {
+    enum Calibration {
+        UNCALIBRATED = 0;
+        LOW = 1;
+        MEDIUM = 2;
+        HIGH = 3;
+    }
+
+    float yaw = 1;           /* rad */
+    float pitch = 2;         /* rad */
+    float roll = 3;          /* rad */
+    float rot_rate_x = 4;    /* rad/s? */
+    float rot_rate_y = 5;    /* rad/s? */
+    float rot_rate_z = 6;    /* rad/s? */
+    float user_accel_x = 7;  /* g's */
+    float user_accel_y = 8;  /* g's */
+    float user_accel_z = 9;  /* g's */
+    float grav_x = 10;       /* g's */
+    float grav_y = 11;       /* g's */
+    float grav_z = 12;       /* g's */
+    float heading = 13;      /* deg (-1 or 0.0-360.0) */
+    float mag_x = 14;        /* uT */
+    float mag_y = 15;        /* uT */
+    float mag_z = 16;        /* uT */
+    Calibration mag_calibration_acc = 17;
+}
+
+message GPS {
+    float altitude = 1;  /* m; above sea level */
+    float longitude = 2; /* deg */
+    float latitude = 3;  /* deg */
+    float horiz_acc = 4; /* +/- m; if negative, lat/lon invalid */
+    float vert_acc = 5;  /* +/- m; if negative, alt invalid */
+    float course = 6;    /* deg; relative to due north */
+    float speed = 7;     /* m/s */
+    sint32 floor = 8;    /* floor of building; TODO if it can be negative, use sint32 */
+}
+
+message Battery {
+    enum BatteryState {
+        CHARGING = 0;
+        /* TODO others? */
+    }
+    float level = 1;
+    BatteryState state = 2;
+}
+
+message SensorData {
+    /* Timestamp and seconds since boot are in device motion and acceleration */
+    string timestamp = 1;         /* e.g. 2019-06-07 03:48:06.9980 */
+    float seconds_since_boot = 2;
+
+    /* On the watch, only one of these will be given at a time
+     *
+     * Note: raw_accel is separate from Motion since it's separate on the
+     * Apple watch.
+     */
+    Accelerometer raw_accel = 3;
+    Motion motion = 4;
+    GPS gps = 5;
+    Battery bat = 6;
+}
+
+message Label {
+    string timestamp = 1; /* e.g. 2019-06-07 03:48:06.9980 */
+    /* TODO could also use enum but then it's harder if they change, probably
+     * infrequent enough string is fine */
+    string label = 2;
+}

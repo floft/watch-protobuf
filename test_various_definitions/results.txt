@@ -1,0 +1,12 @@
+JSON bytes:    29877556 # 28.49 MiB / 15min = 1.89 MiB/min                             2.35 days
+No nest bytes: 6964768  # 6.64  MiB / 15min = 0.44 MiB/min                             10.06 days
+Nest bytes:    7294141  # 6.96  MiB / 15min = 0.46 MiB/min                             9.61 days
+Nest 2 bytes:  7011793  # 6.69  MiB / 15min = 0.45 MiB/min (separate raw_accel)        10.00 days
+Nest 2 bytes2: 6917677  # 6.60  MiB / 15min = 0.44 MiB/min (raw_accel in SensorData)   10.13 days
+
+Day calc: 4.7*1024/(6917677/1024/1024/15*60*18)
+Recommendation: no nest, easy to extend with any number of arbitrary named values.
+
+Just an estimate, 0.46 MiB/min * 60 min/hr * 18 hr/day * 7 days ~= 3.4 GiB
+and that's less than 4.7 GiB, so should work
+but.... probably 2.4 KiB or so extra per file? so 163 bytes / min, ~1.2 MiB over the week (negligible)

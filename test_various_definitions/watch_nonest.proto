@@ -1,0 +1,65 @@
+/* SensorData is the data collected from the watch sensors.
+ * Label is the human-annotated label. */
+syntax = "proto3";
+
+message SensorData {
+    /* Timestamp and seconds since boot are in device motion and acceleration */
+    string timestamp = 1;         /* e.g. 2019-06-07 03:48:06.9980 */
+    float seconds_since_boot = 2;
+
+    /* Acceleration message */
+    float raw_accel_x = 3; /* g's */
+    float raw_accel_y = 4; /* g's */
+    float raw_accel_z = 5; /* g's */
+
+    /* Device Motion */
+    enum Calibration {
+        UNCALIBRATED = 0;
+        LOW = 1;
+        MEDIUM = 2;
+        HIGH = 3;
+    }
+
+    float yaw = 6;           /* rad */
+    float pitch = 7;         /* rad */
+    float roll = 8;          /* rad */
+    float rot_rate_x = 9;    /* rad/s? */
+    float rot_rate_y = 10;   /* rad/s? */
+    float rot_rate_z = 11;   /* rad/s? */
+    float heading = 12;      /* deg (-1 or 0.0-360.0) */
+    float user_accel_x = 13; /* g's */
+    float user_accel_y = 14; /* g's */
+    float user_accel_z = 15; /* g's */
+    float grav_x = 16;       /* g's */
+    float grav_y = 17;       /* g's */
+    float grav_z = 18;       /* g's */
+    float mag_x = 19;        /* uT */
+    float mag_y = 20;        /* uT */
+    float mag_z = 21;        /* uT */
+    Calibration mag_calibration_acc = 22;
+
+    /* GPS */
+    float altitude = 23;  /* m; above sea level */
+    float longitude = 24; /* deg */
+    float latitude = 25;  /* deg */
+    float course = 26;    /* deg; relative to due north */
+    float speed = 27;     /* m/s */
+    float horiz_acc = 28; /* +/- m; if negative, lat/lon invalid */
+    float vert_acc = 29;  /* +/- m; if negative, alt invalid */
+    sint32 floor = 30;    /* floor of building; TODO if it can be negative, use sint32 */
+
+    /* Battery */
+    enum BatteryState {
+        CHARGING = 0;
+        /* TODO others? */
+    }
+    float bat_level = 31;
+    BatteryState bat_state = 32;
+}
+
+message Label {
+    string timestamp = 1; /* e.g. 2019-06-07 03:48:06.9980 */
+    /* TODO could also use enum but then it's harder if they change, probably
+     * infrequent enough string is fine */
+    string label = 2;
+}
