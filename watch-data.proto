@@ -1,0 +1,94 @@
+/* SensorData is the data collected from the watch sensors.
+ * PromptResponse is a response to a prompt. */
+syntax = "proto3";
+
+message SensorData {
+    /* Timestamp */
+    double epoch = 1;   /* seconds since 00:00:00 UTC on 1 January 1970 */
+    /* key = 2 slot kept in case we add seconds since boot */
+    
+    /* Message Type */
+    enum MessageType {
+        MESSAGE_TYPE_UNSPECIFIED = 0;
+        MESSAGE_TYPE_DEVICE_MOTION = 1;
+        MESSAGE_TYPE_ACCELEROMETER = 2;
+        MESSAGE_TYPE_GYROSCOPE = 3;
+        MESSAGE_TYPE_MAGNETOMETER = 4;
+        MESSAGE_TYPE_LOCATION = 5;
+        MESSAGE_TYPE_BATTERY = 6;
+    }
+    
+    MessageType message_type = 3;
+
+    /* Acceleration Message */
+    float raw_accel_x = 4; /* g's */
+    float raw_accel_y = 5; /* g's */
+    float raw_accel_z = 6; /* g's */
+
+    /* Device Motion */
+    enum MagCalibration {
+        MAG_CALIBRATION_UNSPECIFIED = 0;
+        MAG_CALIBRATION_UNCALIBRATED = 1;
+        MAG_CALIBRATION_LOW = 2;
+        MAG_CALIBRATION_MEDIUM = 3;
+        MAG_CALIBRATION_HIGH = 4;
+    }
+
+    float yaw = 7;           /* rad */
+    float pitch = 8;         /* rad */
+    float roll = 9;          /* rad */
+    float rot_rate_x = 10;   /* rad/s? */
+    float rot_rate_y = 11;   /* rad/s? */
+    float rot_rate_z = 12;   /* rad/s? */
+    float user_accel_x = 13; /* g's */
+    float user_accel_y = 14; /* g's */
+    float user_accel_z = 15; /* g's */
+    float grav_x = 16;       /* g's */
+    float grav_y = 17;       /* g's */
+    float grav_z = 18;       /* g's */
+    float heading = 19;      /* deg (-1 or 0.0-360.0) */
+    float mag_x = 20;        /* uT */
+    float mag_y = 21;        /* uT */
+    float mag_z = 22;        /* uT */
+    MagCalibration mag_calibration_acc = 23;
+
+    /* GPS */
+    float latitude = 24;  /* deg */
+    float longitude = 25; /* deg */
+    float altitude = 26;  /* m; above sea level */
+    float horiz_acc = 27; /* +/- m; if negative, lat/lon invalid */
+    float vert_acc = 28;  /* +/- m; if negative, alt invalid */
+    float course = 29;    /* deg; relative to due north */
+    float speed = 30;     /* m/s */
+    sint32 floor = 31;    /* floor of building; 0 = ground, - = below-ground, + = above-ground */
+
+    /* Battery */
+    enum BatteryState {
+        BATTERY_STATE_UNSPECIFIED = 0;
+        BATTERY_STATE_CHARGING = 1;
+        BATTERY_STATE_FULL = 2;
+        BATTERY_STATE_UNKNOWN = 3;
+        BATTERY_STATE_UNPLUGGED = 4;
+    }
+    
+    float bat_level = 32; /* 0.0 (0%) to 1.0 (100%) charge; -1.0 = unknown/invalid */
+    BatteryState bat_state = 33;
+}
+
+message PromptResponse {
+    /* Timestamp */
+    double epoch = 1;   /* seconds since 00:00:00 UTC on 1 January 1970 */
+    
+    /* Prompt Type */
+    enum PromptType {
+        PROMPT_TYPE_UNSPECIFIED = 0;
+        PROMPT_TYPE_ACTIVITY_QUERY = 1;
+    }
+    
+    PromptType prompt_type = 2;
+    
+    /* Leave some space for new one-byte keys */
+    
+    /* Activity Query/Label */
+    string user_activity_label = 8;
+}

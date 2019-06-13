@@ -1,2 +1,2 @@
 #!/bin/bash
-protoc watch.proto --python_out=.
+protoc watch-data.proto --python_out=.

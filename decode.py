@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 from google.protobuf import json_format
 
-import watch_pb2
+from watch_data_pb2 import SensorData
 
 
 def decode(filename):
@@ -23,15 +23,18 @@ def decode(filename):
             if size == b"":  # eof
                 break
 
-            size = int.from_bytes(size, "big")
+            size = int.from_bytes(size, "little")
             data = f.read(size)
 
             # Create message from read bytes
-            msg = watch_pb2.SensorData()
+            msg = SensorData()
             msg.ParseFromString(data)
 
             # Convert to human-readable JSON
             result += json_format.MessageToJson(msg) + "\n"
+
+            # Note: to get datetime object
+            # datetime.fromtimestamp(msg.epoch)
 
     return result
 
