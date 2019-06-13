@@ -31,10 +31,14 @@ def decode(filename):
             msg.ParseFromString(data)
 
             # Convert to human-readable JSON
-            result += json_format.MessageToJson(msg) + "\n"
+            result += json_format.MessageToJson(msg) + ",\n"
 
             # Note: to get datetime object
             # datetime.fromtimestamp(msg.epoch)
+
+    # Remove the last comma and new line since last comma is invalid JSON
+    if result != "":
+        result = "[" + result[:-2] + "]"
 
     return result
 
