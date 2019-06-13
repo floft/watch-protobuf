@@ -3,6 +3,7 @@ No nest bytes: 6964768  # 6.64  MiB / 15min = 0.44 MiB/min                      
 Nest bytes:    7294141  # 6.96  MiB / 15min = 0.46 MiB/min                             9.61 days
 Nest 2 bytes:  7011793  # 6.69  MiB / 15min = 0.45 MiB/min (separate raw_accel)        10.00 days
 Nest 2 bytes2: 6917677  # 6.60  MiB / 15min = 0.44 MiB/min (raw_accel in SensorData)   10.13 days
+Final one:     4894614  # 4.67  MiB / 15min = 0.31 MiB/min                             14.32 days
 
 Day calc: 4.7*1024/(6917677/1024/1024/15*60*18)
 Recommendation: no nest, easy to extend with any number of arbitrary named values.
