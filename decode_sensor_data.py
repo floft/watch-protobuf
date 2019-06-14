@@ -56,15 +56,13 @@ def msg_to_json(msg):
 
         data["magnetic_field"] = {
             "calibration_accuracy": get_enum_str(msg, "mag_calibration_acc", mag_calib),
-            "x": 0.0,
-            "y": 0.0,
-            "z": 0.0,
+            "x": msg.mag_x,
+            "y": msg.mag_y,
+            "z": msg.mag_z,
         }
     elif msg.message_type == SensorData.MESSAGE_TYPE_LOCATION:
-        data["coordinate"] = {
-            "longitude": msg.longitude,
-            "latitude": msg.latitude,
-        }
+        data["longitude"] = msg.longitude
+        data["latitude"] = msg.latitude
         data["altitude"] = msg.altitude
         data["vertical_accuracy"] = msg.vert_acc
         data["horizontal_accuracy"] = msg.horiz_acc
@@ -72,8 +70,8 @@ def msg_to_json(msg):
         data["speed"] = msg.speed if msg.course != 0.0 else -1.0
         data["floor"] = msg.floor
     elif msg.message_type == SensorData.MESSAGE_TYPE_BATTERY:
-        data["level"] = msg.bat_level
-        data["state"] = get_enum_str(msg, "bat_state", msg.bat_state)
+        data["bat_level"] = msg.bat_level
+        data["bat_state"] = get_enum_str(msg, "bat_state", msg.bat_state)
     else:
         raise NotImplementedError("found unknown message type")
 
