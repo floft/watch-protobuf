@@ -19,6 +19,7 @@ def msg_to_json(msg):
     data = {}
 
     data["epoch"] = str(datetime.fromtimestamp(msg.epoch))
+    data["message_type"] = get_enum_str(msg, "message_type", msg.message_type)
 
     if msg.message_type == SensorData.MESSAGE_TYPE_ACCELEROMETER:
         data["raw_acceleration"] = {
@@ -47,28 +48,47 @@ def msg_to_json(msg):
             "y": msg.grav_y,
             "z": msg.grav_z,
         }
-        data["heading"] = msg.heading if msg.course != 0.0 else -1.0
+        data["heading"] = msg.heading if msg.course != 0.0 else None
 
         if msg.mag_calibration_acc == SensorData.MAG_CALIBRATION_UNSPECIFIED:
-            mag_calib = SensorData.MAG_CALIBRATION_UNCALIBRATED
+            data["magnetic_field"] = {
+                "calibration_accuracy": \
+                    get_enum_str(msg, "mag_calibration_acc", SensorData.MAG_CALIBRATION_UNCALIBRATED),
+                "x": None,
+                "y": None,
+                "z": None,
+            }
         else:
-            mag_calib = msg.mag_calibration_acc
-
-        data["magnetic_field"] = {
-            "calibration_accuracy": get_enum_str(msg, "mag_calibration_acc", mag_calib),
-            "x": msg.mag_x,
-            "y": msg.mag_y,
-            "z": msg.mag_z,
-        }
+            data["magnetic_field"] = {
+                "calibration_accuracy": get_enum_str(msg, "mag_calibration_acc", msg.mag_calibration_acc),
+                "x": msg.mag_x,
+                "y": msg.mag_y,
+                "z": msg.mag_z,
+            }
     elif msg.message_type == SensorData.MESSAGE_TYPE_LOCATION:
-        data["longitude"] = msg.longitude
-        data["latitude"] = msg.latitude
-        data["altitude"] = msg.altitude
-        data["vertical_accuracy"] = msg.vert_acc
-        data["horizontal_accuracy"] = msg.horiz_acc
-        data["course"] = msg.course if msg.course != 0.0 else -1.0
-        data["speed"] = msg.speed if msg.course != 0.0 else -1.0
-        data["floor"] = msg.floor
+        # Note: default values for numeric types are 0 with proto3, so we can't
+        # differentiate 0.0 from unspecified. However, it's highly unlikely that
+        # multiple values are exactly 0.0, so we'll use that to determine if
+        # the values should be valid.
+        if msg.longitude == 0.0 and msg.latitude == 0.0 and msg.horiz_acc == 0.0:
+            data["longitude"] = None
+            data["latitude"] = None
+            data["horizontal_accuracy"] = None
+        else:
+            data["longitude"] = msg.longitude
+            data["latitude"] = msg.latitude
+            data["horizontal_accuracy"] = msg.horiz_acc
+
+        if msg.altitude == 0.0 and msg.vert_acc == 0.0:
+            data["altitude"] = None
+            data["vertical_accuracy"] = None
+        else:
+            data["altitude"] = msg.altitude
+            data["vertical_accuracy"] = msg.vert_acc
+
+        data["course"] = msg.course if msg.course != 0.0 else None
+        data["speed"] = msg.speed if msg.course != 0.0 else None
+        data["floor"] = msg.floor if msg.floor != 0 else None
     elif msg.message_type == SensorData.MESSAGE_TYPE_BATTERY:
         data["bat_level"] = msg.bat_level
         data["bat_state"] = get_enum_str(msg, "bat_state", msg.bat_state)
