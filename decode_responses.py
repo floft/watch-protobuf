@@ -30,7 +30,7 @@ def msg_to_json(msg):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: ./decode_response.py input.pb output.json")
+        print("Usage: ./decode_responses.py input.pb output.json")
         exit(1)
 
     input_fn = sys.argv[1]
