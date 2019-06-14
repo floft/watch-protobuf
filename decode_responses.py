@@ -9,7 +9,6 @@ import sys
 import json
 
 from datetime import datetime
-from google.protobuf import json_format
 
 from decoding import decode, messages_to_json
 from watch_data_pb2 import PromptResponse

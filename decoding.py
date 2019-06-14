@@ -1,7 +1,6 @@
 """
 Shared code for both decoding sensor data and responses
 """
-from watch_data_pb2 import PromptResponse
 
 
 def decode(filename, message_type):
