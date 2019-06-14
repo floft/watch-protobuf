@@ -11,30 +11,8 @@ import json
 from datetime import datetime
 from google.protobuf import json_format
 
+from decoding import decode, messages_to_json, get_enum_str
 from watch_data_pb2 import SensorData
-
-
-def decode(filename):
-    """ Decode protobuf messages from file """
-    messages = []
-
-    with open(filename, "rb") as f:
-        while True:
-            # Get size of message, then read that many bytes
-            size = f.read(2)
-
-            if size == b"":  # eof
-                break
-
-            size = int.from_bytes(size, "little")
-            data = f.read(size)
-
-            # Create message from read bytes
-            msg = SensorData()
-            msg.ParseFromString(data)
-            messages.append(msg)
-
-    return messages
 
 
 def msg_to_json(msg):
@@ -78,7 +56,7 @@ def msg_to_json(msg):
             mag_calib = msg.mag_calibration_acc
 
         data["magnetic_field"] = {
-            "calibration_accuracy": msg.DESCRIPTOR.fields_by_name["mag_calibration_acc"].enum_type.values_by_number[mag_calib].name,
+            "calibration_accuracy": get_enum_str(msg, "mag_calibration_acc", mag_calib),
             "x": 0.0,
             "y": 0.0,
             "z": 0.0,
@@ -96,29 +74,12 @@ def msg_to_json(msg):
         data["floor"] = msg.floor
     elif msg.message_type == SensorData.MESSAGE_TYPE_BATTERY:
         data["level"] = msg.bat_level
-        data["state"] = msg.DESCRIPTOR.fields_by_name["bat_state"].enum_type.values_by_number[msg.bat_state].name
+        data["state"] = get_enum_str(msg, "bat_state", msg.bat_state)
     else:
         raise NotImplementedError("found unknown message type")
 
     return json.dumps(data)
 
-
-def messages_to_json(messages):
-    """ Convert list of messages to JSON and sort on timestamp """
-    # Sort since when saving to a file on the watch, they may be out of order
-    messages.sort(key=lambda x: x.epoch)
-
-    # Output JSON
-    result = ""
-
-    for msg in messages:
-        result += msg_to_json(msg) + ",\n"
-
-    # Remove the last comma and new line since last comma is invalid JSON
-    if result != "":
-        result = "[" + result[:-2] + "]"
-
-    return result
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -135,7 +96,7 @@ if __name__ == "__main__":
         print("Error: output file exists:", output_fn)
         exit(1)
 
-    data = messages_to_json(decode(input_fn))
+    data = messages_to_json(decode(input_fn, SensorData), msg_to_json)
 
     with open(output_fn, "w") as f:
         f.write(data)

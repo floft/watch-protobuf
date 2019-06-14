@@ -11,30 +11,8 @@ import json
 from datetime import datetime
 from google.protobuf import json_format
 
+from decoding import decode, messages_to_json
 from watch_data_pb2 import PromptResponse
-
-
-def decode(filename):
-    """ Decode protobuf messages from file """
-    messages = []
-
-    with open(filename, "rb") as f:
-        while True:
-            # Get size of message, then read that many bytes
-            size = f.read(2)
-
-            if size == b"":  # eof
-                break
-
-            size = int.from_bytes(size, "little")
-            data = f.read(size)
-
-            # Create message from read bytes
-            msg = PromptResponse()
-            msg.ParseFromString(data)
-            messages.append(msg)
-
-    return messages
 
 
 def msg_to_json(msg):
@@ -51,23 +29,6 @@ def msg_to_json(msg):
     return json.dumps(data)
 
 
-def messages_to_json(messages):
-    """ Convert list of messages to JSON and sort on timestamp """
-    # Sort since when saving to a file on the watch, they may be out of order
-    messages.sort(key=lambda x: x.epoch)
-
-    # Output JSON
-    result = ""
-
-    for msg in messages:
-        result += msg_to_json(msg) + ",\n"
-
-    # Remove the last comma and new line since last comma is invalid JSON
-    if result != "":
-        result = "[" + result[:-2] + "]"
-
-    return result
-
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Usage: ./decode_response.py input.pb output.json")
@@ -83,7 +44,7 @@ if __name__ == "__main__":
         print("Error: output file exists:", output_fn)
         exit(1)
 
-    data = messages_to_json(decode(input_fn))
+    data = messages_to_json(decode(input_fn, PromptResponse), msg_to_json)
 
     with open(output_fn, "w") as f:
         f.write(data)
