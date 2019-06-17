@@ -26,22 +26,23 @@ def decode(filename, message_type):
     return messages
 
 
-def messages_to_json(messages, msg_to_json):
-    """ Convert list of messages to JSON and sort on timestamp """
+def write_messages(messages, msg_to_json_fn, output_filename):
+    """ Sort messages on timestamp, convert to JSON and write to disk """
     # Sort since when saving to a file on the watch, they may be out of order
     messages.sort(key=lambda x: x.epoch)
 
     # Output JSON
-    result = ""
+    with open(output_filename, "w") as f:
+        f.write("[")
 
-    for msg in messages:
-        result += msg_to_json(msg) + ",\n"
+        for i, msg in enumerate(messages):
+            f.write(msg_to_json_fn(msg))
 
-    # Remove the last comma and new line since last comma is invalid JSON
-    if result != "":
-        result = "[" + result[:-2] + "]"
+            # Invalid JSON if we have an extra comma at the end
+            if i != len(messages)-1:
+                f.write(",\n")
 
-    return result
+        f.write("]\n")
 
 
 def get_enum_str(msg, field_name, enum_int):

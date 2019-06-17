@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 Decode protobuf into JSON
-  - Manually create JSON from desired fields
-  - Sort on timestamp
 """
 import os
 import sys
@@ -10,7 +8,7 @@ import json
 
 from datetime import datetime
 
-from decoding import decode, messages_to_json, get_enum_str
+from decoding import decode, write_messages, get_enum_str
 from watch_data_pb2 import SensorData
 
 
@@ -113,7 +111,4 @@ if __name__ == "__main__":
         print("Error: output file exists:", output_fn)
         exit(1)
 
-    data = messages_to_json(decode(input_fn, SensorData), msg_to_json)
-
-    with open(output_fn, "w") as f:
-        f.write(data)
+    write_messages(decode(input_fn, SensorData), msg_to_json, output_fn)
