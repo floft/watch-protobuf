@@ -50,7 +50,7 @@ def msg_to_json(msg):
 
         if msg.mag_calibration_acc == SensorData.MAG_CALIBRATION_UNSPECIFIED:
             data["magnetic_field"] = {
-                "calibration_accuracy": \
+                "calibration_accuracy":
                     get_enum_str(msg, "mag_calibration_acc", SensorData.MAG_CALIBRATION_UNCALIBRATED),
                 "x": None,
                 "y": None,
