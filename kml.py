@@ -9,8 +9,8 @@ import os
 import sys
 
 from datetime import datetime
-from fastkml import kml, styles, TimeSpan
-from shapely.geometry import Point, LineString, Polygon
+from fastkml import kml, styles
+from shapely.geometry import Polygon
 
 from decoding import decode
 from watch_data_pb2 import SensorData
