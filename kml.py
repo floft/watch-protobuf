@@ -9,8 +9,7 @@ import os
 import sys
 
 from datetime import datetime
-from fastkml import kml, styles
-from shapely.geometry import Polygon
+from fastkml import kml, styles, geometry
 
 from decoding import decode
 from watch_data_pb2 import SensorData
@@ -52,7 +51,9 @@ def write_kml(messages, output_filename):
             # We're drawing lines between points, so skip the first point
             if i != 0:
                 p = kml.Placemark(ns, 'point-'+str(i), 'point-'+str(i), styles=s)
-                p.geometry = Polygon([pt_prev, pt, pt, pt_prev])
+                p.geometry = geometry.Geometry(ns, 'geometry-'+str(i),
+                    geometry.Polygon([pt_prev, pt, pt, pt_prev]),
+                    altitude_mode='absolute')
                 p.begin = ts_prev
                 p.end = ts
                 f.append(p)
