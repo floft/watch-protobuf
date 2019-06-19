@@ -9,11 +9,22 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+from absl import app
+from absl import flags
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from decoding import decode
 from watch_data_pb2 import SensorData
+
+FLAGS = flags.FLAGS
+
+flags.DEFINE_string("input", None, "Input protobuf file")
+flags.DEFINE_boolean("save", False, "If not animating, save the figures to files")
+flags.DEFINE_float("freq", 50.0, "Sampling frequency of accelerometers, etc.")
+flags.DEFINE_boolean("animate", False, "Animate spectrogram rather than plot")
+
+flags.mark_flag_as_required("input")
 
 
 def hide_border(ax):
@@ -74,7 +85,7 @@ def _plot_fft(data, units, freq, names, NFFT, noverlap, modes, axes, fig, t):
     return plot_list, additional_axes
 
 
-def plot_fft(data, title, units, freq=50.0, save=False, names=["x", "y", "z"],
+def plot_fft(data, title, units, freq, names=["x", "y", "z"],
         NFFT=128, noverlap=118, modes=["psd"]):
     """ Plot single FFT, by default an FFT for each of x/y/z """
     t = np.arange(0.0, len(data)*1.0/freq, 1.0/freq)
@@ -88,12 +99,12 @@ def plot_fft(data, title, units, freq=50.0, save=False, names=["x", "y", "z"],
 
     _plot_fft(data, units, freq, names, NFFT, noverlap, modes, axes, fig, t)
 
-    if save:
+    if FLAGS.save:
         plt.savefig("Plots - "+title+".png", dpi=100,
             bbox_inches="tight", pad_inches=0)
 
 
-def animate_fft(data, title, units, freq=50.0, names=["x", "y", "z"],
+def animate_fft(data, title, units, freq, names=["x", "y", "z"],
         NFFT=128, noverlap=118, modes=["psd"],
         start=0, length=120*60, update=60*60):
     """ Animate the spectrogram, based on Steve's animate code """
@@ -171,27 +182,22 @@ def plot_data(messages, max_len=None, sort=False, animate=False):
             break
 
     if animate:
-        ani = animate_fft(raw_accel, "Raw Acceleration", "g's")
+        ani = animate_fft(raw_accel, "Raw Acceleration", "g's", FLAGS.freq)
         plt.show()
     else:
-        plot_fft(raw_accel, "Raw Acceleration", "g's")
-        plot_fft(user_accel, "User Acceleration", "g's")
-        plot_fft(grav, "Gravity", "g's")
-        plot_fft(rot_rate, "Rotation Rates", "rad/s")
-        plot_fft(attitude, "Attitude", "rad", names=["roll", "pitch", "yaw"])
+        plot_fft(raw_accel, "Raw Acceleration", "g's", FLAGS.freq)
+        plot_fft(user_accel, "User Acceleration", "g's", FLAGS.freq)
+        plot_fft(grav, "Gravity", "g's", FLAGS.freq)
+        plot_fft(rot_rate, "Rotation Rates", "rad/s", FLAGS.freq)
+        plot_fft(attitude, "Attitude", "rad", FLAGS.freq,
+            names=["roll", "pitch", "yaw"])
 
         plt.show()
+
+
+def main(argv):
+    plot_data(decode(FLAGS.input, SensorData), animate=FLAGS.animate)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: ./fft.py input.pb")
-        exit(1)
-
-    input_fn = sys.argv[1]
-
-    if not os.path.exists(input_fn):
-        print("Error: input file does not exist:", input_fn)
-        exit(1)
-
-    plot_data(decode(input_fn, SensorData))
+    app.run(main)
