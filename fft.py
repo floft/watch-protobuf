@@ -21,7 +21,7 @@ flags.DEFINE_string("input", None, "Input protobuf file")
 flags.DEFINE_boolean("save", False, "If not animating, save the figures to files")
 flags.DEFINE_boolean("sort", True, "Sort protobuf messages")
 flags.DEFINE_float("freq", 50.0, "Sampling frequency in Hz of accelerometers, etc.")
-flags.DEFINE_boolean("animate", False, "Animate spectrogram rather than plot")
+flags.DEFINE_enum("animate", "none", ["none", "raw_accel", "user_accel", "grav", "rot_rate", "attitude"], "Animate spectrogram rather than plot, if any other than \"none\"")
 flags.DEFINE_integer("nfft", 128, "NFFT for spectrogram, samples per FFT block")
 flags.DEFINE_integer("noverlap", 118, "noverlap for spectrogram, overlap between subsequent windows for FFT")
 flags.DEFINE_integer("animate_start", 0, "Sample to start animation at")
@@ -210,9 +210,20 @@ def plot_data(messages, max_len=None):
         if max_len is not None and accel_i > max_len and motion_i > max_len:
             break
 
-    if FLAGS.animate:
+    if FLAGS.animate != "none":
         # If we don't keep the returned value, it won't animate
-        ani = animate_fft(raw_accel, "Raw Acceleration", "g's")
+        if FLAGS.animate == "raw_accel":
+            ani = animate_fft(raw_accel, "Raw Acceleration", "g's")
+        elif FLAGS.animate == "user_accel":
+            ani = animate_fft(user_accel, "User Acceleration", "g's")
+        elif FLAGS.animate == "grav":
+            ani = animate_fft(grav, "Gravity", "g's")
+        elif FLAGS.animate == "rot_rate":
+            ani = animate_fft(rot_rate, "Rotation Rates", "rad/s")
+        elif FLAGS.animate == "attitude":
+            ani = animate_fft(attitude, "Attitude", "rad",
+                names=["roll", "pitch", "yaw"])
+
         plt.show()
     else:
         plot_fft(raw_accel, "Raw Acceleration", "g's")
