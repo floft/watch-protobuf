@@ -19,6 +19,7 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string("input", None, "Input protobuf file")
 flags.DEFINE_boolean("save", False, "If not animating, save the figures to files")
+flags.DEFINE_boolean("sort", True, "Sort protobuf messages")
 flags.DEFINE_float("freq", 50.0, "Sampling frequency in Hz of accelerometers, etc.")
 flags.DEFINE_boolean("animate", False, "Animate spectrogram rather than plot")
 flags.DEFINE_integer("nfft", 128, "NFFT for spectrogram, samples per FFT block")
@@ -178,10 +179,10 @@ def animate_fft(data, title, units, names=["x", "y", "z"]):
     return ani
 
 
-def plot_data(messages, max_len=None, sort=False, animate=False):
+def plot_data(messages, max_len=None):
     """ Sort messages on timestamp, plot max_len samples for FFTs """
     # Sort since when saving to a file on the watch, they may be out of order
-    if sort:
+    if FLAGS.sort:
         messages.sort(key=lambda x: x.epoch)
 
     # Get max_len of data
@@ -209,7 +210,7 @@ def plot_data(messages, max_len=None, sort=False, animate=False):
         if max_len is not None and accel_i > max_len and motion_i > max_len:
             break
 
-    if animate:
+    if FLAGS.animate:
         # If we don't keep the returned value, it won't animate
         ani = animate_fft(raw_accel, "Raw Acceleration", "g's")
         plt.show()
@@ -224,7 +225,7 @@ def plot_data(messages, max_len=None, sort=False, animate=False):
 
 
 def main(argv):
-    plot_data(decode(FLAGS.input, SensorData), animate=FLAGS.animate)
+    plot_data(decode(FLAGS.input, SensorData))
 
 
 if __name__ == "__main__":
