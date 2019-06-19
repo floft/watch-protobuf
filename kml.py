@@ -37,7 +37,6 @@ def write_kml(messages, output_filename):
     ts_prev = None
 
     for msg in messages:
-
         if msg.message_type == SensorData.MESSAGE_TYPE_LOCATION:
             # Skip if invalid lat/lon/alt value
             if msg.longitude == 0.0 and msg.latitude == 0.0 and msg.horiz_acc == 0.0:
@@ -64,6 +63,7 @@ def write_kml(messages, output_filename):
 
     with open(output_filename, "w") as f:
         f.write(k.to_string(prettyprint=True))
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
