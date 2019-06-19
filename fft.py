@@ -4,8 +4,6 @@ Plot spectrograms of the data
 
 See: https://matplotlib.org/3.1.0/api/_as_gen/matplotlib.pyplot.specgram.html
 """
-import os
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
