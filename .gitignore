@@ -4,3 +4,4 @@ __pycache__
 *.json
 *_pb2.py
 *.kml
+*.png

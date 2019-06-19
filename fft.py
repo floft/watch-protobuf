@@ -22,8 +22,8 @@ def hide_border(ax):
     ax.spines["left"].set_visible(False)
 
 
-def plot_fft(data, title, units, freq=50.0, names=["x", "y", "z"],
-        NFFT=30*50, noverlap=(30-1)*50, modes=["psd"]):
+def plot_fft(data, title, units, freq=50.0, plot=True, names=["x", "y", "z"],
+        NFFT=30*50, noverlap=(30-1)*50, modes=["psd", "magnitude", "angle", "phase"]):
     """ Plot single FFT, by default an FFT for each of x/y/z """
     t = np.arange(0.0, len(data)*1.0/freq, 1.0/freq)
 
@@ -55,10 +55,14 @@ def plot_fft(data, title, units, freq=50.0, names=["x", "y", "z"],
         for j, mode in enumerate(modes):
             Pxx, freqs, bins, im = ax[j+1][i].specgram(x, NFFT=NFFT, Fs=freq,
                 noverlap=noverlap, mode=mode)
-            ax[j+1][i].set_xlabel('seconds')
             hide_border(ax[j+1][i])
             ax[j+1][i].margins(x=0)
 
+            # Only bottom one
+            if j == len(modes)-1:
+                ax[j+1][i].set_xlabel('seconds')
+
+            # Only left one
             if i == 0:
                 ax[j+1][i].set_ylabel(mode)
 
@@ -66,6 +70,10 @@ def plot_fft(data, title, units, freq=50.0, names=["x", "y", "z"],
             divider = make_axes_locatable(ax[j+1][i])
             cax = divider.append_axes('right', size='5%', pad=0.05)
             fig.colorbar(im, cax=cax, orientation='vertical')
+
+    if plot:
+        plt.savefig("Plots - "+title+".png", dpi=100,
+            bbox_inches="tight", pad_inches=0)
 
 
 def plot_data(messages, max_len=None, sort=False):
