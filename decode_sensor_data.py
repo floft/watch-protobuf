@@ -46,7 +46,7 @@ def msg_to_json(msg):
             "y": msg.grav_y,
             "z": msg.grav_z,
         }
-        data["heading"] = msg.heading if msg.course != 0.0 else None
+        data["heading"] = msg.heading if msg.heading != 0.0 else None
 
         if msg.mag_calibration_acc == SensorData.MAG_CALIBRATION_UNSPECIFIED:
             data["magnetic_field"] = {
