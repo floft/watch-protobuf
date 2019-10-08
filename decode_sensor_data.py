@@ -85,7 +85,7 @@ def msg_to_json(msg):
             data["vertical_accuracy"] = msg.vert_acc
 
         data["course"] = msg.course if msg.course != 0.0 else None
-        data["speed"] = msg.speed if msg.course != 0.0 else None
+        data["speed"] = msg.speed if msg.speed != 0.0 else None
         data["floor"] = msg.floor if msg.floor != 0 else None
     elif msg.message_type == SensorData.MESSAGE_TYPE_BATTERY:
         data["bat_level"] = msg.bat_level
