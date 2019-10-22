@@ -3,7 +3,7 @@
 Convert the .pb data/response files to .tfrecord files for use in TensorFlow
 
 Creates state vectors at each device motion timestamp of the last sensor
-values for all the other sensors (raw accel, gyro, location). Ignores battery
+values for all the other sensors (raw accel, location). Ignores battery
 and skips magnetometer (not available on the watch).
 """
 import os
@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from pool import run_job_pool
 from decoding import parse_data, parse_response
 from data_iterator import DataIterator
-from writers import TFRecordWriter, CSVWriter, JSONWriter
+from writers import TFRecordWriter, CSVWriter
 from state_vector_peek_iterator import StateVectorPeekIterator
 
 FLAGS = flags.FLAGS
@@ -27,9 +27,7 @@ flags.DEFINE_string("nums", None, "Comma-separated list of which watch numbers t
 flags.DEFINE_integer("window_size", 5, "Size of window to use to make sure the file's out-of-order samples are sorted, done per-sensor")
 flags.DEFINE_integer("begin_offset", -60, "Seconds offset to start looking at data after (before is negative) the label timestamp")
 flags.DEFINE_integer("end_offset", -30, "Seconds offset to end looking at data after (before is negative) the label timestamp")
-flags.DEFINE_integer("hz", 50, "Frequency data was recorded at, used to pad time steps to hz*(end_offset-begin_offset) -- only used with --output=tfrecord")
-flags.DEFINE_boolean("split", True, "Whether to split into train/valid/test data files")
-flags.DEFINE_enum("output", "tfrecord", ["tfrecord", "csv", "json"], "Output format to save windows using")
+flags.DEFINE_enum("output", "tfrecord", ["tfrecord", "csv"], "Output format to save windows using")
 
 flags.mark_flag_as_required("dir")
 flags.mark_flag_as_required("nums")
@@ -149,19 +147,11 @@ def process_watch(watch_number):
             y = parse_response(resp)["label"]
             windows.append((x, y))
 
-    # TODO
-    if FLAGS.split:
-        pass
-
     # Output
     if FLAGS.output == "tfrecord":
-        # TODO this will error if there's any too large, check for that
-        max_num_time_steps = FLAGS.hz*(FLAGS.end_offset - FLAGS.begin_offset)
-        writer = TFRecordWriter(watch_number, max_num_time_steps)
+        writer = TFRecordWriter(watch_number)
     elif FLAGS.output == "csv":
         writer = CSVWriter(watch_number)
-    elif FLAGS.output == "json":
-        writer = JSONWriter(watch_number)
     else:
         raise NotImplementedError("unsupported output format: "+FLAGS.output)
 
