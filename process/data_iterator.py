@@ -3,7 +3,7 @@ Data iterators
 """
 import heapq
 
-from decoding import decode, parse_data, parse_response
+from decoding import decode
 from watch_data_pb2 import SensorData, PromptResponse
 
 
@@ -14,7 +14,7 @@ class SortOnEpoch:
         self.data = data
 
     def __lt__(self, other):
-        return self.data["epoch"] < other.data["epoch"]
+        return self.data.epoch < other.data.epoch
 
     def get(self):
         return self.data
@@ -67,18 +67,13 @@ class DataIteratorBase:
                 else:
                     return  # No more files/data
 
-            # Parse -- ignore everything except a particular type of message
-            # if desired.
             msg = self.messages[self.message_index]
 
-            if self.responses:
-                parsed = parse_response(msg)
-            else:
-                parsed = parse_data(msg, ignore_all_except=self.data_type)
-
-            # Save to window if we parsed the message
-            if parsed is not None:
-                self._push(parsed)
+            # Save if it's a response, but if a data type, then if we want to
+            # only keep certain messages, skip if it's not the type we want.
+            if self.responses or self.data_type is None \
+                    or msg.message_type == self.data_type:
+                self._push(msg)
 
             self.message_index += 1
 
@@ -93,7 +88,7 @@ class DataIteratorBase:
 
             # Verify we're sorted -- i.e. that a new element is never older than
             # the previously returned maximum epoch
-            epoch = item["epoch"]
+            epoch = item.epoch
             if epoch < self.last_epoch:
                 raise NeedLargerWindowError
             self.last_epoch = max(self.last_epoch, epoch)

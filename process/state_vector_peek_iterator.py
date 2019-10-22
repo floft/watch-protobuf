@@ -42,7 +42,7 @@ class StateVectorPeekIterator:
         last = None
 
         for v in peek_iter:
-            if v["epoch"] < epoch:
+            if v.epoch < epoch:
                 last = v
                 peek_iter.pop()
             else:
@@ -64,8 +64,8 @@ class StateVectorPeekIterator:
 
         if found:
             # Get other sensor values closest but <= to DM's epoch
-            last_acc = self.advance_till_epoch(self.accPeekIter, dm["epoch"])
-            last_loc = self.advance_till_epoch(self.locPeekIter, dm["epoch"])
+            last_acc = self.advance_till_epoch(self.accPeekIter, dm.epoch)
+            last_loc = self.advance_till_epoch(self.locPeekIter, dm.epoch)
 
             # We might have already gotten all the acc/loc data from the files,
             # so keep using the previous last values if we don't have any more.
@@ -109,34 +109,12 @@ class StateVectorPeekIterator:
         raise StopIteration
 
     def create_state_vector(self, dm, acc, loc):
-        # Note: values near the beginning of the file may be None since there
-        # may not have been data from these sensors before then.
-        return {
-            "epoch": dm["epoch"],
-            "data": [
-                dm["attitude"]["roll"] if dm is not None else None,
-                dm["attitude"]["pitch"] if dm is not None else None,
-                dm["attitude"]["yaw"] if dm is not None else None,
-                dm["rotation_rate"]["x"] if dm is not None else None,
-                dm["rotation_rate"]["y"] if dm is not None else None,
-                dm["rotation_rate"]["z"] if dm is not None else None,
-                dm["user_acceleration"]["x"] if dm is not None else None,
-                dm["user_acceleration"]["y"] if dm is not None else None,
-                dm["user_acceleration"]["z"] if dm is not None else None,
-                dm["gravity"]["x"] if dm is not None else None,
-                dm["gravity"]["y"] if dm is not None else None,
-                dm["gravity"]["z"] if dm is not None else None,
-                dm["heading"] if dm is not None else None,
-                acc["raw_acceleration"]["x"] if acc is not None else None,
-                acc["raw_acceleration"]["y"] if acc is not None else None,
-                acc["raw_acceleration"]["z"] if acc is not None else None,
-                loc["longitude"] if loc is not None else None,
-                loc["latitude"] if loc is not None else None,
-                loc["horizontal_accuracy"] if loc is not None else None,
-                loc["altitude"] if loc is not None else None,
-                loc["vertical_accuracy"] if loc is not None else None,
-                loc["course"] if loc is not None else None,
-                loc["speed"] if loc is not None else None,
-                loc["floor"] if loc is not None else None,
-            ]
-        }
+        # Return the data that can be parsed later. Wait as long as possible to
+        # parse since we end up skipping lots of data, so we can skip parsing
+        # if we skip the data point.
+        return (
+            dm.epoch,
+            dm,
+            acc,
+            loc,
+        )

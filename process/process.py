@@ -14,6 +14,7 @@ from absl import flags
 from datetime import datetime, timedelta
 
 from pool import run_job_pool
+from decoding import parse_data, parse_response
 from data_iterator import DataIterator
 from writers import TFRecordWriter, CSVWriter, JSONWriter
 from state_vector_peek_iterator import StateVectorPeekIterator
@@ -63,6 +64,44 @@ def get_watch_files(watch_number, responses=False):
     return [str(x) for x in files]
 
 
+def parse_state_vector(epoch, dm, acc, loc):
+    """ Parse here rather than in DataIterator since we end up skipping lots
+    of data, so if we do it now, we'll run the parsing way fewer times """
+    if dm is not None:
+        dm = parse_data(dm)
+    if acc is not None:
+        acc = parse_data(acc)
+    if loc is not None:
+        loc = parse_data(loc)
+
+    return [
+        dm["attitude"]["roll"] if dm is not None else None,
+        dm["attitude"]["pitch"] if dm is not None else None,
+        dm["attitude"]["yaw"] if dm is not None else None,
+        dm["rotation_rate"]["x"] if dm is not None else None,
+        dm["rotation_rate"]["y"] if dm is not None else None,
+        dm["rotation_rate"]["z"] if dm is not None else None,
+        dm["user_acceleration"]["x"] if dm is not None else None,
+        dm["user_acceleration"]["y"] if dm is not None else None,
+        dm["user_acceleration"]["z"] if dm is not None else None,
+        dm["gravity"]["x"] if dm is not None else None,
+        dm["gravity"]["y"] if dm is not None else None,
+        dm["gravity"]["z"] if dm is not None else None,
+        dm["heading"] if dm is not None else None,
+        acc["raw_acceleration"]["x"] if acc is not None else None,
+        acc["raw_acceleration"]["y"] if acc is not None else None,
+        acc["raw_acceleration"]["z"] if acc is not None else None,
+        loc["longitude"] if loc is not None else None,
+        loc["latitude"] if loc is not None else None,
+        loc["horizontal_accuracy"] if loc is not None else None,
+        loc["altitude"] if loc is not None else None,
+        loc["vertical_accuracy"] if loc is not None else None,
+        loc["course"] if loc is not None else None,
+        loc["speed"] if loc is not None else None,
+        loc["floor"] if loc is not None else None,
+    ]
+
+
 def process_watch(watch_number):
     # Get the data files and response files for this watch number
     data_files = get_watch_files(watch_number)
@@ -79,9 +118,9 @@ def process_watch(watch_number):
     windows = []
 
     for resp in respIter:
-        beginTime = datetime.fromtimestamp(resp["epoch"]) \
+        beginTime = datetime.fromtimestamp(resp.epoch) \
             + timedelta(seconds=FLAGS.begin_offset)
-        endTime = datetime.fromtimestamp(resp["epoch"]) \
+        endTime = datetime.fromtimestamp(resp.epoch) \
             + timedelta(seconds=FLAGS.end_offset)
 
         # Skip state vectors up till the begin time, then stop when we
@@ -91,14 +130,14 @@ def process_watch(watch_number):
         # state so that the next iterator call will be different (not inf loop).
         x = []
 
-        for state in statePeekIter:
-            epoch = datetime.fromtimestamp(state["epoch"])
+        for epoch, dm, acc, loc in statePeekIter:
+            epoch = datetime.fromtimestamp(epoch)
 
             if epoch < beginTime:
                 statePeekIter.pop()
                 continue
             elif epoch <= endTime:
-                x.append(state["data"])
+                x.append(parse_state_vector(epoch, dm, acc, loc))
                 statePeekIter.pop()
             else:
                 # Don't consume - we'll look at this state for the next
@@ -107,7 +146,7 @@ def process_watch(watch_number):
 
         # Save this window if we have data for it
         if len(x) > 0:
-            y = resp["label"]
+            y = parse_response(resp)["label"]
             windows.append((x, y))
 
     # TODO
