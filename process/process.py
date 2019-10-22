@@ -24,7 +24,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("dir", None, "Directory where the watch files are (can be in subdirs of this)")
 flags.DEFINE_integer("jobs", 0, "How many jobs to run simultaneously (0 = number of cores)")
 flags.DEFINE_string("nums", None, "Comma-separated list of which watch numbers to process (e.g. 1,2,3,4,...,15)")
-flags.DEFINE_integer("window_size", 5, "Size of window to use to make sure the file's out-of-order samples are sorted, done per-sensor")
+flags.DEFINE_integer("window_size", 50, "Size of window to use to make sure the file's out-of-order samples are sorted, done per-sensor")
 flags.DEFINE_integer("begin_offset", -60, "Seconds offset to start looking at data after (before is negative) the label timestamp")
 flags.DEFINE_integer("end_offset", -30, "Seconds offset to end looking at data after (before is negative) the label timestamp")
 flags.DEFINE_enum("output", "tfrecord", ["tfrecord", "csv"], "Output format to save windows using")
@@ -101,6 +101,15 @@ def parse_state_vector(epoch, dm, acc, loc):
 
 
 def process_watch(watch_number):
+    """
+    Process the data from one watch from any week (matches multiple subdirs)
+
+    Note: this stores the results entirely in memory till we write to disk at
+    the end so we can do stuff like train/test splits, split into windows, etc.
+    Will need to be tweaked if at some point one users's data doesn't entirely
+    fit into memory. (Not sure sklearn.model_selection.train_test_split works
+    for that?)
+    """
     # Get the data files and response files for this watch number
     data_files = get_watch_files(watch_number)
     response_files = get_watch_files(watch_number, responses=True)
