@@ -28,6 +28,7 @@ flags.DEFINE_integer("window_size", 50, "Size of window to use to make sure the 
 flags.DEFINE_integer("begin_offset", -60, "Seconds offset to start looking at data after (before is negative) the label timestamp")
 flags.DEFINE_integer("end_offset", -30, "Seconds offset to end looking at data after (before is negative) the label timestamp")
 flags.DEFINE_enum("output", "tfrecord", ["tfrecord", "csv"], "Output format to save windows using")
+flags.DEFINE_boolean("debug", False, "Print debug information")
 
 flags.mark_flag_as_required("dir")
 flags.mark_flag_as_required("nums")
@@ -152,9 +153,17 @@ def process_watch(watch_number):
                 break
 
         # Save this window if we have data for it
+        y = parse_response(resp)["label"]
+
         if len(x) > 0:
-            y = parse_response(resp)["label"]
+            if FLAGS.debug:
+                print("Watch%03d"%watch_number + ": found data for label",
+                    y, "at time", str(datetime.fromtimestamp(resp.epoch)),
+                    "having", len(x), "time steps")
             windows.append((x, y))
+        elif FLAGS.debug:
+            print("Watch%03d"%watch_number + ": Warning: no data for label",
+                y, "at time", str(datetime.fromtimestamp(resp.epoch)))
 
     # Output
     if FLAGS.output == "tfrecord":

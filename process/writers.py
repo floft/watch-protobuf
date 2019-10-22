@@ -82,7 +82,10 @@ class WriterBase:
             else:
                 i += window_size
 
-        return np.vstack(windows_x)
+        if len(windows_x) > 0:
+            return np.vstack(windows_x)
+        else:
+            return None
 
     def pad_to(self, data, desired_length):
         """
@@ -144,12 +147,26 @@ class TFRecordWriter(WriterBase):
             # Split into windows
             x_windows = self.create_windows_x(x, self.window_size, self.window_overlap)
 
-            # We have the same label for all the x windows that we split x into,
-            # so just copy it that many times
-            y_windows = [y]*len(x_windows)
+            # Skip if we couldn't split into windows, probably because there's
+            # not enough data in this example to have even one window.
+            #
+            # Guess at cause, either:
+            # - Labels too close: first label consumes most of the data that
+            #   would be used by the second. Maybe they tapped multiple times,
+            #   tried correcting an incorrect label, etc.
+            # - Label comes too soon after taking off the charger, when it
+            #   doesn't collect data. It takes some time to start/stop
+            #   collecting data (only checks every so many seconds).
+            #
+            # This may yield shorter windows or no time steps at all, depending
+            # on the proximity to the prior label or taking off the charger.
+            if x_windows is not None:
+                # We have the same label for all the x windows that we split x into,
+                # so just copy it that many times
+                y_windows = [y]*len(x_windows)
 
-            xs.append(x_windows)
-            ys.append(y_windows)
+                xs.append(x_windows)
+                ys.append(y_windows)
 
         xs = np.vstack(xs).astype(np.float32)
         ys = np.hstack(ys).astype(np.float32)
