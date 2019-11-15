@@ -12,6 +12,7 @@ Setting up Nominatim server (download
     cd nominatim-docker
 
     mkdir data
+    sudo chattr +C data  # if using btrfs, disable copy-on-write (COW)
     cd data
     wget https://download.geofabrik.de/north-america/us-west-191101.osm.pbf
     wget https://download.geofabrik.de/north-america/us-west-191101.osm.pbf.md5
