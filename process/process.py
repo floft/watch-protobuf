@@ -7,12 +7,17 @@ values for all the other sensors (raw accel, location). Ignores battery
 and skips magnetometer (not available on the watch).
 """
 import os
+import json
+import socket
 import pathlib
+import urllib.request
 
 from absl import app
 from absl import flags
 from datetime import datetime, timedelta
+from urllib.error import HTTPError, URLError
 
+from osm_tags import categories, types
 from pool import run_job_pool
 from decoding import parse_data, parse_response
 from data_iterator import DataIterator
@@ -63,9 +68,92 @@ def get_watch_files(watch_number, responses=False):
     return [str(x) for x in files]
 
 
-def parse_state_vector(epoch, dm, acc, loc):
+def reverse_geocode(lat, lon, timeout=1):
+    """
+    Get location information about a GPS coordinate (lat, lon) with
+    a local instance of Open Street Maps Nominatim
+
+    This assumes you have a Nominatim server running on 7070 as described
+    in README.md
+
+    We use a small timeout since we're going to be calling this many, many times,
+    and if the local server takes a while, processing data will take forever.
+
+    We could use geopy, but it seems to download this in the "json" format
+    hard-coded, but we need category, etc. information only available in the
+    other formats such as jsonv2.
+
+    See hard-coded format in geopy:
+    https://github.com/geopy/geopy/blob/85ccae74f2e8011c89d2e78d941b5df414ab99d1/geopy/geocoders/osm.py#L453
+
+    See example reverse lookup JSON with "jsonv2" format:
+    https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2
+
+    Code for handling timeouts:
+    https://stackoverflow.com/q/8763451
+    """
+    url = "http://localhost:7070/reverse?format=jsonv2&lat=" \
+        + str(lat) + "&lon=" + str(lon)
+
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as con:
+            return json.loads(con.read().decode("utf-8"))
+    except HTTPError as error:
+        print("Warning:", error, "loading", url)
+    except URLError as error:
+        if isinstance(error.reason, socket.timeout):
+            print("Warning: socket timed out loading", url)
+        else:
+            print("Warning: unknown error loading", url)
+    except socket.timeout:
+        print("Warning: socket timed out loading", url)
+
+    return None
+
+
+def one_hot_location(possible_values, value, list_name=None):
+    """ Generate the one-hot vector for the OSM location categories/types """
+    # Last one is a not-in-list "other" category/type
+    results = [0]*(len(possible_values) + 1)
+
+    if value in possible_values:
+        results[possible_values.index(value)] = 1
+    else:
+        results[-1] = 1
+
+        # For debugging, print out what (common?) values we missed
+        if list_name is not None:
+            print("Warning:", value, "not in", list_name)
+
+    return results
+
+
+def parse_state_vector(epoch, dm, acc, loc, geolocator):
     """ Parse here rather than in DataIterator since we end up skipping lots
-    of data, so if we do it now, we'll run the parsing way fewer times """
+    of data, so if we do it now, we'll run the parsing way fewer times
+
+    Time features:
+        - second (/60)
+        - minute (/60)
+        - hour (/12)
+        - hour (/24)
+        - second of day (/86400)
+        - day of week (/7)
+        - day of month (/31)
+        - day of year (/366)
+        - month of year (/12)
+        - year
+
+    Reverse geocoded location - one-hot encoded, e.g. if we had 3 categories:
+        <1,0,0,0> - amenity
+        <0,1,0,0> - barrier
+        <0,0,1,0> - bridge
+        <0,0,0,1> - "other"
+    but for all the location categories and types in osm_tags.py. Additional
+    "other" category/type if not in the list of possible categories/types.
+
+    Then, followed by the raw data.
+    """
     if dm is not None:
         dm = parse_data(dm)
     if acc is not None:
@@ -73,7 +161,20 @@ def parse_state_vector(epoch, dm, acc, loc):
     if loc is not None:
         loc = parse_data(loc)
 
-    return [
+    time_features = [
+        epoch.second,
+        epoch.minute,
+        epoch.hour % 12,  # 12-hour
+        epoch.hour,  # 24-hour
+        (epoch - epoch.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds(),  # since midnight
+        epoch.weekday(),
+        epoch.day,  # day of month
+        (epoch - epoch.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)).days + 1,  # day of year
+        epoch.month,
+        epoch.year
+    ]
+
+    raw_data = [
         dm["attitude"]["roll"] if dm is not None else None,
         dm["attitude"]["pitch"] if dm is not None else None,
         dm["attitude"]["yaw"] if dm is not None else None,
@@ -99,6 +200,25 @@ def parse_state_vector(epoch, dm, acc, loc):
         loc["speed"] if loc is not None else None,
         loc["floor"] if loc is not None else None,
     ]
+
+    # Default location to an additional "other" type of location. If we can
+    # do the reverse lookup, it'll instead fill in the appropriate category/type
+    location_category_features = [0]*len(categories) + [1]
+    location_type_features = [0]*len(types) + [1]
+
+    if loc is not None:
+        location = reverse_geocode(loc["latitude"], loc["longitude"])
+
+        if location is not None:
+            location_category_features = one_hot_location(categories,
+                location["category"], "categories")
+            location_type_features = one_hot_location(types,
+                location["type"], "types")
+
+    features = time_features + location_category_features \
+        + location_type_features + raw_data
+
+    return features
 
 
 def process_watch(watch_number):
@@ -147,6 +267,10 @@ def process_watch(watch_number):
             elif epoch <= endTime:
                 x.append(parse_state_vector(epoch, dm, acc, loc))
                 statePeekIter.pop()
+
+                # Print out the number of features once
+                if len(windows) == 0:
+                    print("Watch%03d"%watch_number + ": Num features:", len(x[-1]))
             else:
                 # Don't consume - we'll look at this state for the next
                 # window
@@ -167,13 +291,17 @@ def process_watch(watch_number):
 
     # Output
     if FLAGS.output == "tfrecord":
-        writer = TFRecordWriter(watch_number)
+        # Write both including the other class and not including it
+        writer = TFRecordWriter(watch_number, include_other=True)
+        writer.write_records(windows)
+
+        writer = TFRecordWriter(watch_number, include_other=False)
+        writer.write_records(windows)
     elif FLAGS.output == "csv":
         writer = CSVWriter(watch_number)
+        writer.write_records(windows)
     else:
         raise NotImplementedError("unsupported output format: "+FLAGS.output)
-
-    writer.write_records(windows)
 
 
 def main(argv):

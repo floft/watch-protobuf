@@ -10,15 +10,23 @@ from normalization import calc_normalization, apply_normalization
 
 
 class WriterBase:
-    def __init__(self, watch_number):
+    def __init__(self, watch_number, include_other=True):
         self.watch_number = watch_number
-        self.filename_prefix = "watch%03d"%watch_number
+        self.include_other = include_other
 
         # For the summer experiment, TODO put this somewhere else
-        self.class_labels = [
-            "Cook", "Eat", "Hygiene", "Work", "Exercise", "Travel", "Other",
-        ]
-        self.num_classes = len(self.class_labels)
+        if self.include_other:
+            self.filename_prefix = "watch_"+str(watch_number)
+            self.class_labels = [
+                "Cook", "Eat", "Hygiene", "Work", "Exercise", "Travel", "Other",
+            ]
+            self.num_classes = len(self.class_labels)
+        else:
+            self.filename_prefix = "watch_noother_"+str(watch_number)
+            self.class_labels = [
+                "Cook", "Eat", "Hygiene", "Work", "Exercise", "Travel",
+            ]
+            self.num_classes = len(self.class_labels)
 
     def train_test_split(self, x, y, test_percent=0.2, random_state=42):
         """
@@ -126,8 +134,9 @@ class WriterBase:
 
 class TFRecordWriter(WriterBase):
     def __init__(self, watch_number,
-            window_size=128, window_overlap=False, normalization="meanstd"):
-        super().__init__(watch_number)
+            window_size=128, window_overlap=False, normalization="meanstd",
+            **kwargs):
+        super().__init__(watch_number, **kwargs)
         self.window_size = window_size
         self.window_overlap = window_overlap
         self.normalization = normalization
@@ -140,6 +149,10 @@ class TFRecordWriter(WriterBase):
             # Create a numpy array and convert None values to 0
             x = np.array(x, dtype=np.float32)
             x[np.isnan(x)] = 0.0
+
+            # If desired, skip the other class
+            if not self.include_other and y == "Other":
+                continue
 
             # Convert label to integer
             y = self.label_to_int(y)
