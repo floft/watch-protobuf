@@ -11,6 +11,9 @@ Setting up Nominatim server (download
     git clone https://github.com/mediagis/nominatim-docker
     cd nominatim-docker
 
+    # Note: if you only have 16 GiB of RAM, then try adding
+    # --osm2pgsql-cache 1000 to <version>/init.sh
+
     mkdir data
     sudo chattr +C data  # if using btrfs, disable copy-on-write (COW)
     cd data
@@ -24,3 +27,7 @@ Setting up Nominatim server (download
     sudo docker build -t nominatim .
     sudo docker run -t -v /path/to/nominatim-docker/data:/data nominatim  sh /app/init.sh /data/us-west-191101.osm.pbf postgresdata 8
     sudo docker run --restart=always -p 6432:5432 -p 7070:8080 -d --name nominatim -v /home/garrett/Documents/Github/nominatim-docker/data/postgresdata:/var/lib/postgresql/11/main nominatim bash /app/start.sh
+
+Then, to process a few watch files:
+
+    ./process.py --dir=/path/to/watch/files --nums=1,2,3

@@ -68,7 +68,7 @@ def get_watch_files(watch_number, responses=False):
     return [str(x) for x in files]
 
 
-def reverse_geocode(lat, lon, timeout=1):
+def reverse_geocode(lat, lon, timeout=300):
     """
     Get location information about a GPS coordinate (lat, lon) with
     a local instance of Open Street Maps Nominatim
@@ -76,8 +76,9 @@ def reverse_geocode(lat, lon, timeout=1):
     This assumes you have a Nominatim server running on 7070 as described
     in README.md
 
-    We use a small timeout since we're going to be calling this many, many times,
-    and if the local server takes a while, processing data will take forever.
+    We use a large timeout since sometimes postgresql decides to autovacuum the
+    database which takes a bit of time. Though, really, we should probably just
+    wait till it's done doing that.
 
     We could use geopy, but it seems to download this in the "json" format
     hard-coded, but we need category, etc. information only available in the
@@ -128,7 +129,7 @@ def one_hot_location(possible_values, value, list_name=None):
     return results
 
 
-def parse_state_vector(epoch, dm, acc, loc, geolocator):
+def parse_state_vector(epoch, dm, acc, loc):
     """ Parse here rather than in DataIterator since we end up skipping lots
     of data, so if we do it now, we'll run the parsing way fewer times
 
@@ -215,6 +216,9 @@ def parse_state_vector(epoch, dm, acc, loc, geolocator):
             location_type_features = one_hot_location(types,
                 location["type"], "types")
 
+            #print("found", location["category"], location["type"], "for",
+            #    str(loc["latitude"])+", "+str(loc["longitude"]))
+
     features = time_features + location_category_features \
         + location_type_features + raw_data
 
@@ -244,6 +248,7 @@ def process_watch(watch_number):
 
     # Generate window for each response
     windows = []
+    printed_feature_count = False
 
     for resp in respIter:
         beginTime = datetime.fromtimestamp(resp.epoch) \
@@ -269,8 +274,9 @@ def process_watch(watch_number):
                 statePeekIter.pop()
 
                 # Print out the number of features once
-                if len(windows) == 0:
+                if not printed_feature_count:
                     print("Watch%03d"%watch_number + ": Num features:", len(x[-1]))
+                    printed_feature_count = True
             else:
                 # Don't consume - we'll look at this state for the next
                 # window

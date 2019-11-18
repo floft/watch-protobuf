@@ -77,19 +77,20 @@ if __name__ == "__main__":
         "footway",
         "water",
         "bridge",
+        "leisure",
     ]
-    keys = []
+    types = []
 
     for category in categories:
-        keys += get_keys(category)
+        types += get_keys(category)
 
         # Don't overwhelm their servers
         time.sleep(1)
 
     # Tags/keys aren't necessarily unique, so sort/unique them
     categories = sorted(set(categories))
-    keys = sorted(set(keys))
+    types = sorted(set(types))
 
     # Output
     print_str_list(categories, "categories")
-    print_str_list(keys, "keys")
+    print_str_list(types, "types")
