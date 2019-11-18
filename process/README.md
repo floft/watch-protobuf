@@ -2,7 +2,7 @@ process watch data to .tfrecord files
 =====================================
 Dependencies:
 
-    pip3 install --user tensorflow sklearn tqdm absl
+    pip3 install --user tensorflow sklearn tqdm absl lru-dict
 
 Setting up Nominatim server (download
 [region of interest](https://download.geofabrik.de/) and see Docker container
