@@ -32,7 +32,7 @@ def get_json(url, timeout=10):
     return None
 
 
-def get_keys(key, max_results=100, min_fraction=0.0001):
+def get_keys(key, max_results=100, min_fraction=0.1):
     url = "https://taginfo.openstreetmap.org/api/4/key/values?" \
         + "key=" + str(key) + "&" \
         + "filter=all&lang=en&sortname=count&sortorder=desc&page=1&rp=" \
@@ -60,23 +60,12 @@ if __name__ == "__main__":
     categories = [
         "building",
         "highway",
-        "natural",
-        "surface",
-        "landuse",
-        "power",
-        "waterway",
         "amenity",
-        "oneway",
-        "wall",
         "service",
-        "place",
         "shop",
-        "barrier",
-        "crossing",
         "tourism",
         "footway",
         "water",
-        "bridge",
         "leisure",
     ]
     types = []

@@ -9,7 +9,7 @@ from lru import LRU
 from urllib.error import HTTPError, URLError
 
 
-cache = LRU(100)
+cache = LRU(10)
 
 
 def reverse_geocode(lat, lon, timeout=300):
