@@ -9,3 +9,4 @@ tests/
 *.tfrecord
 *.csv
 *.al
+*.txt
