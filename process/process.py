@@ -8,6 +8,7 @@ and skips magnetometer (not available on the watch).
 """
 import os
 import pathlib
+import collections
 
 from absl import app
 from absl import flags
@@ -65,7 +66,7 @@ def get_watch_files(watch_number, responses=False):
     return [str(x) for x in files]
 
 
-def one_hot_location(possible_values, value, list_name=None):
+def one_hot_location(possible_values, value):
     """ Generate the one-hot vector for the OSM location categories/types """
     # Last one is a not-in-list "other" category/type
     results = [0]*(len(possible_values) + 1)
@@ -75,14 +76,10 @@ def one_hot_location(possible_values, value, list_name=None):
     else:
         results[-1] = 1
 
-        # For debugging, print out what (common?) values we missed
-        if list_name is not None:
-            print("Warning:", value, "not in", list_name)
-
     return results
 
 
-def parse_state_vector(epoch, dm, acc, loc):
+def parse_state_vector(epoch, dm, acc, loc, location_categories):
     """ Parse here rather than in DataIterator since we end up skipping lots
     of data, so if we do it now, we'll run the parsing way fewer times
 
@@ -173,6 +170,9 @@ def parse_state_vector(epoch, dm, acc, loc):
             location_type_features = one_hot_location(types,
                 location["type"])
 
+            # Keep track of how many there were of each
+            location_categories[(location["category"], location["type"])] += 1
+
             #print("found", location["category"], location["type"], "for",
             #    str(loc["latitude"])+", "+str(loc["longitude"]))
 
@@ -207,6 +207,9 @@ def process_watch(watch_number):
     windows = []
     printed_feature_count = False
 
+    # Keep track of how many of each category/type we found
+    location_categories = collections.defaultdict(int)
+
     for resp in respIter:
         beginTime = datetime.fromtimestamp(resp.epoch) \
             + timedelta(seconds=FLAGS.begin_offset)
@@ -227,7 +230,8 @@ def process_watch(watch_number):
                 statePeekIter.pop()
                 continue
             elif epoch <= endTime:
-                x.append(parse_state_vector(epoch, dm, acc, loc))
+                x.append(parse_state_vector(epoch, dm, acc, loc,
+                    location_categories))
                 statePeekIter.pop()
 
                 # Print out the number of features once
@@ -251,6 +255,10 @@ def process_watch(watch_number):
         elif FLAGS.debug:
             print("Watch%03d"%watch_number + ": Warning: no data for label",
                 y, "at time", str(datetime.fromtimestamp(resp.epoch)))
+
+    # Debugging
+    print("Watch%03d"%watch_number + ": location categories:",
+        location_categories)
 
     # Output
     if FLAGS.output == "tfrecord":
