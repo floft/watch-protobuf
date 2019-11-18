@@ -128,6 +128,10 @@ def parse_state_vector(epoch, dm, acc, loc):
         epoch.year
     ]
 
+    # We throw out the lat, long, etc. features regarding location since we
+    # instead add the category/type reverse geocode information.
+    # Throw out heading - I think that's from the magnetometer, which we don't
+    # have on this watch.
     raw_data = [
         dm["attitude"]["roll"] if dm is not None else None,
         dm["attitude"]["pitch"] if dm is not None else None,
@@ -141,18 +145,18 @@ def parse_state_vector(epoch, dm, acc, loc):
         dm["gravity"]["x"] if dm is not None else None,
         dm["gravity"]["y"] if dm is not None else None,
         dm["gravity"]["z"] if dm is not None else None,
-        dm["heading"] if dm is not None else None,
+        #dm["heading"] if dm is not None else None,
         acc["raw_acceleration"]["x"] if acc is not None else None,
         acc["raw_acceleration"]["y"] if acc is not None else None,
         acc["raw_acceleration"]["z"] if acc is not None else None,
-        loc["longitude"] if loc is not None else None,
-        loc["latitude"] if loc is not None else None,
-        loc["horizontal_accuracy"] if loc is not None else None,
+        #loc["longitude"] if loc is not None else None,
+        #loc["latitude"] if loc is not None else None,
+        #loc["horizontal_accuracy"] if loc is not None else None,
         loc["altitude"] if loc is not None else None,
-        loc["vertical_accuracy"] if loc is not None else None,
+        #loc["vertical_accuracy"] if loc is not None else None,
         loc["course"] if loc is not None else None,
         loc["speed"] if loc is not None else None,
-        loc["floor"] if loc is not None else None,
+        #loc["floor"] if loc is not None else None,
     ]
 
     # Default location to an additional "other" type of location. If we can
@@ -165,9 +169,9 @@ def parse_state_vector(epoch, dm, acc, loc):
 
         if location is not None:
             location_category_features = one_hot_location(categories,
-                location["category"], "categories")
+                location["category"])
             location_type_features = one_hot_location(types,
-                location["type"], "types")
+                location["type"])
 
             #print("found", location["category"], location["type"], "for",
             #    str(loc["latitude"])+", "+str(loc["longitude"]))
