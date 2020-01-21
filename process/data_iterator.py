@@ -29,7 +29,8 @@ class NeedLargerWindowError(Exception):
 
 
 class DataIteratorBase:
-    def __init__(self, filenames, window, data_type=None, responses=False):
+    def __init__(self, filenames, window, data_type=None, responses=False,
+            downsample=None):
         self.filenames = filenames
         self.window = window
         assert self.window > 0, "window size must be positive"
@@ -52,6 +53,10 @@ class DataIteratorBase:
         # i.e. the window isn't large enough
         self.last_epoch = 0
 
+        # Keep track of if we wish to downsample the data
+        self.downsample = downsample
+        self.downsample_index = 0
+
     def _fill_window(self):
         # Keep going till we fill the window
         while len(self.heap) < self.window:
@@ -73,7 +78,14 @@ class DataIteratorBase:
             # only keep certain messages, skip if it's not the type we want.
             if self.responses or self.data_type is None \
                     or msg.message_type == self.data_type:
-                self._push(msg)
+
+                # And, if it is the data type we care about, then if
+                # downsampling, only take every x'th of these samples
+                self.downsample_index += 1
+
+                if self.downsample is None or \
+                        self.downsample_index%self.downsample == 0:
+                    self._push(msg)
 
             self.message_index += 1
 

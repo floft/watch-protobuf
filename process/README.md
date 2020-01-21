@@ -28,6 +28,8 @@ Setting up Nominatim server (download
     sudo docker run -t -v /path/to/nominatim-docker/data:/data nominatim  sh /app/init.sh /data/us-west-191101.osm.pbf postgresdata 8
     sudo docker run --restart=always -p 6432:5432 -p 7070:8080 -d --name nominatim -v /home/garrett/Documents/Github/nominatim-docker/data/postgresdata:/var/lib/postgresql/11/main nominatim bash /app/start.sh
 
-Then, to process a few watch files:
+Then, to process a few watch files (or see *run.sh*):
 
     ./process.py --dir=/path/to/watch/files --nums=1,2,3
+
+For full data (for a later set of experiments with all raw data), see *run_full.sh*.

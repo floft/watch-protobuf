@@ -3,10 +3,16 @@ Writers
 """
 import numpy as np
 
+from absl import flags
 from sklearn.model_selection import train_test_split
 
-from tfrecord import write_tfrecord, tfrecord_filename
-from normalization import calc_normalization, apply_normalization
+from tfrecord import write_tfrecord, tfrecord_filename, \
+    tfrecord_filename_full, FullTFRecord
+from normalization import calc_normalization, calc_normalization_jagged, \
+    apply_normalization, apply_normalization_jagged, to_numpy_if_not
+
+
+FLAGS = flags.FLAGS
 
 
 class WriterBase:
@@ -40,6 +46,14 @@ class WriterBase:
             stratify=y, random_state=random_state)
         return x_train, y_train, x_test, y_test
 
+    def train_test_split_xs(self, x_dm, x_acc, x_loc, test_percent=0.2,
+            random_state=42):
+        x_dm_train, x_dm_test, x_acc_train, x_acc_test, x_loc_train, x_loc_test = \
+            train_test_split(x_dm, x_acc, x_loc, test_size=test_percent,
+                random_state=random_state)
+        return x_dm_train, x_acc_train, x_loc_train, \
+            x_dm_test, x_acc_test, x_loc_test
+
     def valid_split(self, data, labels, seed=None, validation_size=1000):
         """ (Stratified) split training data into train/valid as is commonly done,
         taking 1000 random (stratified) (labeled, even if target domain) samples for
@@ -56,6 +70,27 @@ class WriterBase:
                 stratify=labels, random_state=seed)
 
         return x_valid, y_valid, x_train, y_train
+
+    def valid_split_xs(self, x_dm, x_acc, x_loc, seed=None, validation_size=1000):
+        """ (Stratified) split training data into train/valid as is commonly done,
+        taking 1000 random (stratified) (labeled, even if target domain) samples for
+        a validation set """
+        assert len(x_dm) == len(x_acc)
+        assert len(x_dm) == len(x_loc)
+
+        percentage_size = int(0.2*len(x_dm))
+        if percentage_size > validation_size:
+            test_size = validation_size
+        else:
+            print("Warning: using smaller validation set size", percentage_size)
+            test_size = 0.2  # 20% maximum
+
+        x_dm_train, x_dm_valid, x_acc_train, x_acc_valid, x_loc_train, x_loc_valid = \
+            train_test_split(x_dm, x_acc, x_loc, test_size=test_size,
+                random_state=seed)
+
+        return x_dm_train, x_acc_train, x_loc_train, \
+            x_dm_valid, x_acc_valid, x_loc_valid
 
     def create_windows_x(self, x, window_size, overlap):
         """
@@ -122,6 +157,29 @@ class WriterBase:
                     mode="constant", constant_values=0)
         else:
             raise NotImplementedError("pad_to requires 2 or 3-dim data")
+
+    def normalize(self, train_data, valid_data, test_data,
+            normalization_method, jagged=False):
+        # Which functions to use
+        calc = calc_normalization
+        apply = apply_normalization
+
+        if jagged:
+            calc = calc_normalization_jagged
+            apply = apply_normalization_jagged
+
+        if normalization_method != "none":
+            # Skip if no data
+            if len(train_data) > 0:
+                # Calculate normalization only on the training data
+                normalization = calc(train_data, normalization_method)
+
+                # Apply the normalization to the training, validation, and testing data
+                train_data = apply(train_data, normalization)
+                valid_data = apply(valid_data, normalization)
+                test_data = apply(test_data, normalization)
+
+        return train_data, valid_data, test_data
 
     def label_to_int(self, label_name):
         """ e.g. Bathe to 0 """
@@ -210,14 +268,9 @@ class TFRecordWriter(WriterBase):
         valid_data, valid_labels, train_data, train_labels = \
             self.valid_split(train_data, train_labels, seed=0)
 
-        # Calculate normalization only on the training data
-        if self.normalization != "none":
-            normalization = calc_normalization(train_data, self.normalization)
-
-            # Apply the normalization to the training, validation, and testing data
-            train_data = apply_normalization(train_data, normalization)
-            valid_data = apply_normalization(valid_data, normalization)
-            test_data = apply_normalization(test_data, normalization)
+        # Normalize
+        train_data, valid_data, test_data = self.normalize(
+            train_data, valid_data, test_data, self.normalization)
 
         # Saving
         self.write(train_filename, train_data, train_labels)
@@ -249,3 +302,96 @@ class CSVWriter(WriterBase):
                 # print()
 
                 f.write(";".join([",".join([str(f) for f in ts]) for ts in x]) + ";" + y + "\n")
+
+
+class TFRecordWriterFullData(WriterBase):
+    """ Write raw full data -- part 1 """
+    def __init__(self, watch_number, **kwargs):
+        super().__init__(watch_number, **kwargs)
+        filename = tfrecord_filename_full(self.filename_prefix)
+        self.record_writer = FullTFRecord(filename)
+
+    def clean(self, x):
+        # # Create a numpy array and convert None values to 0
+        # x = np.array(x, dtype=np.float32)
+        # x[np.isnan(x)] = 0.0
+
+        # We can clean it later if we want... for now just convert to numpy
+        # x = np.array(x, dtype=np.float32)
+
+        # return x
+
+        return to_numpy_if_not(x)
+
+    def write_window(self, x_dm, x_acc, x_loc):
+        x_dm = self.clean(x_dm)
+        x_acc = self.clean(x_acc)
+        x_loc = self.clean(x_loc)
+
+        self.record_writer.write(x_dm, x_acc, x_loc)
+
+    def close(self):
+        self.record_writer.close()
+
+
+class TFRecordWriterFullData2(WriterBase):
+    """ Write normalized train/valid/test full data -- part 2 """
+    def __init__(self, watch_number, normalization="meanstd", **kwargs):
+        super().__init__(watch_number, **kwargs)
+        self.normalization = normalization
+
+    def clean(self, x):
+        x = to_numpy_if_not(x)
+
+        # convert None values to 0
+        x[np.isnan(x)] = 0.0
+
+        return x
+
+    def write(self, filename, x_dm, x_acc, x_loc):
+        assert len(x_dm) == len(x_acc)
+        assert len(x_dm) == len(x_loc)
+
+        record_writer = FullTFRecord(filename)
+
+        for i in range(len(x_dm)):
+            # self.record_writer.write(x_dm[i], x_acc[i], x_loc[i])
+
+            # Clean data first
+            x_dm_cur = self.clean(x_dm[i])
+            x_acc_cur = self.clean(x_acc[i])
+            x_loc_cur = self.clean(x_loc[i])
+
+            record_writer.write(x_dm_cur, x_acc_cur, x_loc_cur)
+
+        record_writer.close()
+
+    def write_records(self, x_dm, x_acc, x_loc):
+        """ Pass in x_dm = [x_dm1, x_dm2, ...] and similarly x_acc and x_loc """
+        train_filename = tfrecord_filename(self.filename_prefix, "train", raw=True)
+        valid_filename = tfrecord_filename(self.filename_prefix, "valid", raw=True)
+        test_filename = tfrecord_filename(self.filename_prefix, "test", raw=True)
+
+        # Split into train/test sets
+        x_dm_train, x_acc_train, x_loc_train, x_dm_test, x_acc_test, x_loc_test = \
+            self.train_test_split_xs(x_dm, x_acc, x_loc)
+
+        # Further split training into train/valid sets
+        x_dm_train, x_acc_train, x_loc_train, x_dm_valid, x_acc_valid, x_loc_valid = \
+            self.valid_split_xs(x_dm_train, x_acc_train, x_loc_train, seed=0)
+
+        # Normalize
+        x_dm_train, x_dm_valid, x_dm_test = self.normalize(
+            x_dm_train, x_dm_valid, x_dm_test, self.normalization, jagged=True)
+        x_acc_train, x_acc_valid, x_acc_test = self.normalize(
+            x_acc_train, x_acc_valid, x_acc_test, self.normalization, jagged=True)
+        x_loc_train, x_loc_valid, x_loc_test = self.normalize(
+            x_loc_train, x_loc_valid, x_loc_test, self.normalization, jagged=True)
+
+        # Saving
+        self.write(train_filename, x_dm_train, x_acc_train, x_loc_train)
+        self.write(valid_filename, x_dm_valid, x_acc_valid, x_loc_valid)
+        self.write(test_filename, x_dm_test, x_acc_test, x_loc_test)
+
+    def close(self):
+        pass

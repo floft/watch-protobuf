@@ -30,7 +30,41 @@ def write_tfrecord(filename, x, y):
             writer.write(tf_example.SerializeToString())
 
 
-def tfrecord_filename(dataset_name, train_or_test):
+class FullTFRecord:
+    def __init__(self, filename, experimental=False):
+        if not experimental:
+            self.need_to_close = True
+            options = tf.io.TFRecordOptions(compression_type="GZIP")
+            self.writer = tf.io.TFRecordWriter(filename, options=options)
+        else:
+            # Errors on write() due to:
+            # `dataset` must be a `tf.data.Dataset` object ???
+            #
+            # Maybe you can't write individual examples but have to write the
+            # whole dataset at once?
+            self.need_to_close = False
+            self.writer = tf.data.experimental.TFRecordWriter(filename,
+                compression_type="GZIP")
+
+    def create_tf_example_full(self, x_dm, x_acc, x_loc):
+        tf_example = tf.train.Example(features=tf.train.Features(feature={
+            'x_dm': _bytes_feature(tf.io.serialize_tensor(x_dm)),
+            'x_acc': _bytes_feature(tf.io.serialize_tensor(x_acc)),
+            'x_loc': _bytes_feature(tf.io.serialize_tensor(x_loc)),
+        }))
+        return tf_example
+
+    def write(self, x_dm, x_acc, x_loc):
+        tf_example = self.create_tf_example_full(x_dm, x_acc, x_loc)
+        self.writer.write(tf_example.SerializeToString())
+
+    def close(self):
+        # Normally the tf.io.TFRecordWriter is used in a with block
+        if self.need_to_close:
+            self.writer.close()
+
+
+def tfrecord_filename(dataset_name, train_or_test, raw=False):
     """
     Version of tfrecord_filename ignoring the pairs and just creating a
     separate file for each domain. This works if there's no changes in the
@@ -40,6 +74,50 @@ def tfrecord_filename(dataset_name, train_or_test):
     assert train_or_test in ["train", "valid", "test"], \
         "train_or_test must be train, valid, or test"
 
-    filename = "%s_%s.tfrecord"%(dataset_name, train_or_test)
+    if raw:
+        filename = "%s_raw_%s.tfrecord"%(dataset_name, train_or_test)
+    else:
+        filename = "%s_%s.tfrecord"%(dataset_name, train_or_test)
 
     return filename
+
+
+def tfrecord_filename_full(prefix):
+    """ Filename for raw data """
+    return prefix + "_raw.tfrecord"
+
+
+def load_tfrecords(filenames, batch_size=None):
+    """ Load data from .tfrecord files, for details see corresponding function
+    in CoDATS load_datasets.py """
+    if len(filenames) == 0:
+        return None
+
+    feature_description = {
+        'x_dm': tf.io.FixedLenFeature([], tf.string),
+        'x_acc': tf.io.FixedLenFeature([], tf.string),
+        'x_loc': tf.io.FixedLenFeature([], tf.string),
+        # 'y': tf.io.FixedLenFeature([], tf.string),
+    }
+
+    def _parse_example_function(example_proto):
+        parsed = tf.io.parse_single_example(serialized=example_proto,
+            features=feature_description)
+        x_dm = tf.io.parse_tensor(parsed["x_dm"], tf.float32)
+        x_acc = tf.io.parse_tensor(parsed["x_acc"], tf.float32)
+        x_loc = tf.io.parse_tensor(parsed["x_loc"], tf.float32)
+        # y = tf.io.parse_tensor(parsed["y"], tf.float32)
+        return x_dm, x_acc, x_loc
+
+    files = tf.data.Dataset.from_tensor_slices(filenames)
+    dataset = files.interleave(
+        lambda x: tf.data.TFRecordDataset(x, compression_type='GZIP').prefetch(100),
+        cycle_length=len(filenames), block_length=1)
+    dataset = dataset.map(_parse_example_function)
+
+    if batch_size is not None:
+        dataset = dataset.batch(batch_size)
+
+    dataset = dataset.prefetch(1)
+
+    return dataset

@@ -1,8 +1,6 @@
 """
 Decode the protobuf files
 """
-from datetime import datetime
-
 from watch_data_pb2 import SensorData, PromptResponse
 
 
