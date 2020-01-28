@@ -5,7 +5,6 @@ Second step of full data processing -- normalize and split into train/valid/test
 Note: sets CUDA_VISIBLE_DEVICES= so that it doesn't use the GPU.
 """
 import os
-import numpy as np
 
 from absl import app
 from absl import flags
@@ -18,6 +17,11 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_integer("jobs", 0, "How many jobs to run simultaneously (0 = number of cores)")
 flags.DEFINE_string("nums", None, "Comma-separated list of which watch numbers to process (e.g. 1,2,3,4,...,15)")
+
+flags.DEFINE_integer("max_dm_length", 300, "If split -- max device motion time series length (if less than true max, time series is truncated)")
+flags.DEFINE_integer("max_acc_length", 300, "If split -- max accelerometer time series length (if less than true max, time series is truncated)")
+flags.DEFINE_integer("max_loc_length", 1, "If split -- max location time series length (if less than true max, time series is truncated)")
+
 flags.DEFINE_boolean("debug", False, "Print debug information")
 
 flags.mark_flag_as_required("nums")

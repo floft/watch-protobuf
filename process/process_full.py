@@ -35,9 +35,15 @@ flags.DEFINE_string("nums", None, "Comma-separated list of which watch numbers t
 flags.DEFINE_integer("order_window_size", 50, "Size of window to use to make sure the file's out-of-order samples are sorted, done per-sensor")
 flags.DEFINE_integer("time_window_size", 60, "Seconds of sensor data for each window")
 flags.DEFINE_integer("min_samples_per_window", 100, "Minimum (device motion) samples in a window, otherwise its discarded (e.g. when on charger)")
-flags.DEFINE_integer("downsample", 0, "Take every x'th accelerometer and device motion sample (e.g. if 50 Hz data and this is 5, gives 10 Hz) (0 = disabled)")
-flags.DEFINE_boolean("split", False, "Split and normalize now rather than in process_full2.py")
-flags.DEFINE_boolean("debug", False, "Print debug information")
+flags.DEFINE_integer("downsample", 10, "Take every x'th accelerometer and device motion sample (e.g. if 50 Hz data and this is 5, gives 10 Hz) (0 = disabled)")
+flags.DEFINE_boolean("split", True, "Split and normalize now rather than in process_full2.py")
+
+# Note: be sure to change these if you change time_window_size and downsample above
+flags.DEFINE_integer("max_dm_length", 300, "If split -- max device motion time series length (if less than true max, time series is truncated; 0 = max length of data)")
+flags.DEFINE_integer("max_acc_length", 300, "If split -- max accelerometer time series length (if less than true max, time series is truncated; 0 = max length of data)")
+flags.DEFINE_integer("max_loc_length", 1, "If split -- max location time series length (if less than true max, time series is truncated; 0 = max length of data)")
+
+flags.DEFINE_boolean("debug", False, "Print debug information (use to inform setting --max_{dm,acc,loc}_length=...)")
 
 flags.mark_flag_as_required("dir")
 flags.mark_flag_as_required("nums")

@@ -2,6 +2,7 @@
 Writers
 """
 import numpy as np
+import tensorflow as tf
 
 from absl import flags
 from sklearn.model_selection import train_test_split
@@ -366,6 +367,16 @@ class TFRecordWriterFullData2(WriterBase):
 
         record_writer.close()
 
+    def pad(self, x, maxlen):
+        """
+        Pad inputs to be same length in the time dimension so we can batch
+        https://www.tensorflow.org/api_docs/python/tf/keras/preprocessing/sequence/pad_sequences
+        """
+        # Done on all examples at once
+        # Shape of x should be something like: [num_examples, time_steps, features]
+        return tf.keras.preprocessing.sequence.pad_sequences(
+            x, maxlen=maxlen, padding='post', truncating='pre')
+
     def write_records(self, x_dm, x_acc, x_loc):
         """ Pass in x_dm = [x_dm1, x_dm2, ...] and similarly x_acc and x_loc """
         train_filename = tfrecord_filename(self.filename_prefix, "train", raw=True)
@@ -387,6 +398,39 @@ class TFRecordWriterFullData2(WriterBase):
             x_acc_train, x_acc_valid, x_acc_test, self.normalization, jagged=True)
         x_loc_train, x_loc_valid, x_loc_test = self.normalize(
             x_loc_train, x_loc_valid, x_loc_test, self.normalization, jagged=True)
+
+        # Pad/truncate to the right length -- after normalizing so the padded
+        # 0 values don't affect the mean, etc.
+        max_dm_length = FLAGS.max_dm_length
+        max_acc_length = FLAGS.max_acc_length
+        max_loc_length = FLAGS.max_loc_length
+
+        if max_dm_length == 0:
+            max_dm_length = None
+        if max_acc_length == 0:
+            max_acc_length = None
+        if max_loc_length == 0:
+            max_loc_length = None
+
+        x_dm_train = self.pad(x_dm_train, max_dm_length)
+        x_dm_valid = self.pad(x_dm_valid, max_dm_length)
+        x_dm_test = self.pad(x_dm_test, max_dm_length)
+        x_acc_train = self.pad(x_acc_train, max_acc_length)
+        x_acc_valid = self.pad(x_acc_valid, max_acc_length)
+        x_acc_test = self.pad(x_acc_test, max_acc_length)
+        x_loc_train = self.pad(x_loc_train, max_loc_length)
+        x_loc_valid = self.pad(x_loc_valid, max_loc_length)
+        x_loc_test = self.pad(x_loc_test, max_loc_length)
+
+        # TODO remove this -- just checking if it's the 300, 300, 1 like set in
+        # the FLAGS.max_{dm,acc,loc}_length
+        print("Watch", self.watch_number)
+        if len(x_dm_train) > 0:
+            print("DM train shape:", x_dm_train[0].shape)
+        if len(x_acc_train) > 0:
+            print("Acc train shape:", x_acc_train[0].shape)
+        if len(x_loc_train) > 0:
+            print("Loc train shape:", x_loc_train[0].shape)
 
         # Saving
         self.write(train_filename, x_dm_train, x_acc_train, x_loc_train)
