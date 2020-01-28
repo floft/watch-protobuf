@@ -375,7 +375,8 @@ class TFRecordWriterFullData2(WriterBase):
         # Done on all examples at once
         # Shape of x should be something like: [num_examples, time_steps, features]
         return tf.keras.preprocessing.sequence.pad_sequences(
-            x, maxlen=maxlen, padding='post', truncating='pre')
+            x, maxlen=maxlen, dtype='float32', padding='post', truncating='pre',
+            value=0.0)
 
     def write_records(self, x_dm, x_acc, x_loc):
         """ Pass in x_dm = [x_dm1, x_dm2, ...] and similarly x_acc and x_loc """
