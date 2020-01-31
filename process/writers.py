@@ -47,13 +47,21 @@ class WriterBase:
             stratify=y, random_state=random_state)
         return x_train, y_train, x_test, y_test
 
-    def train_test_split_xs(self, x_dm, x_acc, x_loc, test_percent=0.2,
-            random_state=42):
-        x_dm_train, x_dm_test, x_acc_train, x_acc_test, x_loc_train, x_loc_test = \
-            train_test_split(x_dm, x_acc, x_loc, test_size=test_percent,
-                random_state=random_state)
+    def train_test_split_xs(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs, test_percent=0.2, random_state=42):
+        x_dm_train, x_dm_test, \
+            x_acc_train, x_acc_test, \
+            x_loc_train, x_loc_test, \
+            x_dm_epochs_train, x_dm_epochs_test, \
+            x_acc_epochs_train, x_acc_epochs_test, \
+            x_loc_epochs_train, x_loc_epochs_test = \
+            train_test_split(x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
+                x_loc_epochs, test_size=test_percent, random_state=random_state)
+
         return x_dm_train, x_acc_train, x_loc_train, \
-            x_dm_test, x_acc_test, x_loc_test
+            x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, \
+            x_dm_test, x_acc_test, x_loc_test, \
+            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test
 
     def valid_split(self, data, labels, seed=None, validation_size=1000):
         """ (Stratified) split training data into train/valid as is commonly done,
@@ -72,12 +80,16 @@ class WriterBase:
 
         return x_valid, y_valid, x_train, y_train
 
-    def valid_split_xs(self, x_dm, x_acc, x_loc, seed=None, validation_size=1000):
+    def valid_split_xs(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs, seed=None, validation_size=1000):
         """ (Stratified) split training data into train/valid as is commonly done,
         taking 1000 random (stratified) (labeled, even if target domain) samples for
         a validation set """
         assert len(x_dm) == len(x_acc)
         assert len(x_dm) == len(x_loc)
+        assert len(x_dm) == len(x_dm_epochs)
+        assert len(x_dm) == len(x_acc_epochs)
+        assert len(x_dm) == len(x_loc_epochs)
 
         percentage_size = int(0.2*len(x_dm))
         if percentage_size > validation_size:
@@ -86,12 +98,19 @@ class WriterBase:
             print("Warning: using smaller validation set size", percentage_size)
             test_size = 0.2  # 20% maximum
 
-        x_dm_train, x_dm_valid, x_acc_train, x_acc_valid, x_loc_train, x_loc_valid = \
-            train_test_split(x_dm, x_acc, x_loc, test_size=test_size,
-                random_state=seed)
+        x_dm_train, x_dm_valid, \
+            x_acc_train, x_acc_valid, \
+            x_loc_train, x_loc_valid, \
+            x_dm_epochs_train, x_dm_epochs_valid, \
+            x_acc_epochs_train, x_acc_epochs_valid, \
+            x_loc_epochs_train, x_loc_epochs_valid = \
+            train_test_split(x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
+                x_loc_epochs, test_size=test_size, random_state=seed)
 
         return x_dm_train, x_acc_train, x_loc_train, \
-            x_dm_valid, x_acc_valid, x_loc_valid
+            x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, \
+            x_dm_valid, x_acc_valid, x_loc_valid, \
+            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid
 
     def create_windows_x(self, x, window_size, overlap):
         """
@@ -324,12 +343,17 @@ class TFRecordWriterFullData(WriterBase):
 
         return to_numpy_if_not(x)
 
-    def write_window(self, x_dm, x_acc, x_loc):
+    def write_window(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs):
         x_dm = self.clean(x_dm)
         x_acc = self.clean(x_acc)
         x_loc = self.clean(x_loc)
+        x_dm_epochs = self.clean(x_dm_epochs)
+        x_acc_epochs = self.clean(x_acc_epochs)
+        x_loc_epochs = self.clean(x_loc_epochs)
 
-        self.record_writer.write(x_dm, x_acc, x_loc)
+        self.record_writer.write(x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs)
 
     def close(self):
         self.record_writer.close()
@@ -349,9 +373,13 @@ class TFRecordWriterFullData2(WriterBase):
 
         return x
 
-    def write(self, filename, x_dm, x_acc, x_loc):
+    def write(self, filename, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs):
         assert len(x_dm) == len(x_acc)
         assert len(x_dm) == len(x_loc)
+        assert len(x_dm) == len(x_dm_epochs)
+        assert len(x_dm) == len(x_acc_epochs)
+        assert len(x_dm) == len(x_loc_epochs)
 
         record_writer = FullTFRecord(filename)
 
@@ -362,8 +390,12 @@ class TFRecordWriterFullData2(WriterBase):
             x_dm_cur = self.clean(x_dm[i])
             x_acc_cur = self.clean(x_acc[i])
             x_loc_cur = self.clean(x_loc[i])
+            x_dm_epochs_cur = self.clean(x_dm_epochs[i])
+            x_acc_epochs_cur = self.clean(x_acc_epochs[i])
+            x_loc_epochs_cur = self.clean(x_loc_epochs[i])
 
-            record_writer.write(x_dm_cur, x_acc_cur, x_loc_cur)
+            record_writer.write(x_dm_cur, x_acc_cur, x_loc_cur, x_dm_epochs_cur,
+                x_acc_epochs_cur, x_loc_epochs_cur)
 
         record_writer.close()
 
@@ -378,19 +410,28 @@ class TFRecordWriterFullData2(WriterBase):
             x, maxlen=maxlen, dtype='float32', padding='post', truncating='pre',
             value=0.0)
 
-    def write_records(self, x_dm, x_acc, x_loc):
+    def write_records(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs):
         """ Pass in x_dm = [x_dm1, x_dm2, ...] and similarly x_acc and x_loc """
         train_filename = tfrecord_filename(self.filename_prefix, "train", raw=True)
         valid_filename = tfrecord_filename(self.filename_prefix, "valid", raw=True)
         test_filename = tfrecord_filename(self.filename_prefix, "test", raw=True)
 
         # Split into train/test sets
-        x_dm_train, x_acc_train, x_loc_train, x_dm_test, x_acc_test, x_loc_test = \
-            self.train_test_split_xs(x_dm, x_acc, x_loc)
+        x_dm_train, x_acc_train, x_loc_train, \
+            x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, \
+            x_dm_test, x_acc_test, x_loc_test, \
+            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test = \
+            self.train_test_split_xs(x_dm, x_acc, x_loc, x_dm_epochs,
+                x_acc_epochs, x_loc_epochs)
 
         # Further split training into train/valid sets
-        x_dm_train, x_acc_train, x_loc_train, x_dm_valid, x_acc_valid, x_loc_valid = \
-            self.valid_split_xs(x_dm_train, x_acc_train, x_loc_train, seed=0)
+        x_dm_train, x_acc_train, x_loc_train, \
+            x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, \
+            x_dm_valid, x_acc_valid, x_loc_valid, \
+            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid = \
+            self.valid_split_xs(x_dm_train, x_acc_train, x_loc_train,
+                x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, seed=0)
 
         # Normalize
         x_dm_train, x_dm_valid, x_dm_test = self.normalize(
@@ -423,6 +464,16 @@ class TFRecordWriterFullData2(WriterBase):
         x_loc_valid = self.pad(x_loc_valid, max_loc_length)
         x_loc_test = self.pad(x_loc_test, max_loc_length)
 
+        x_dm_epochs_train = self.pad(x_dm_epochs_train, max_dm_length)
+        x_dm_epochs_valid = self.pad(x_dm_epochs_valid, max_dm_length)
+        x_dm_epochs_test = self.pad(x_dm_epochs_test, max_dm_length)
+        x_acc_epochs_train = self.pad(x_acc_epochs_train, max_acc_length)
+        x_acc_epochs_valid = self.pad(x_acc_epochs_valid, max_acc_length)
+        x_acc_epochs_test = self.pad(x_acc_epochs_test, max_acc_length)
+        x_loc_epochs_train = self.pad(x_loc_epochs_train, max_loc_length)
+        x_loc_epochs_valid = self.pad(x_loc_epochs_valid, max_loc_length)
+        x_loc_epochs_test = self.pad(x_loc_epochs_test, max_loc_length)
+
         # TODO remove this -- just checking if it's the 300, 300, 1 like set in
         # the FLAGS.max_{dm,acc,loc}_length
         print("Watch", self.watch_number)
@@ -434,9 +485,12 @@ class TFRecordWriterFullData2(WriterBase):
             print("Loc train shape:", x_loc_train[0].shape)
 
         # Saving
-        self.write(train_filename, x_dm_train, x_acc_train, x_loc_train)
-        self.write(valid_filename, x_dm_valid, x_acc_valid, x_loc_valid)
-        self.write(test_filename, x_dm_test, x_acc_test, x_loc_test)
+        self.write(train_filename, x_dm_train, x_acc_train, x_loc_train,
+            x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train)
+        self.write(valid_filename, x_dm_valid, x_acc_valid, x_loc_valid,
+            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid)
+        self.write(test_filename, x_dm_test, x_acc_test, x_loc_test,
+            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test)
 
     def close(self):
         pass

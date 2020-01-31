@@ -194,6 +194,10 @@ def parse_full_data(window, location_categories=None):
     assert loc is not None
     # assert resp is not None
 
+    dm_epochs = [x.epoch for x in dm]
+    acc_epochs = [x.epoch for x in acc]
+    loc_epochs = [x.epoch for x in loc]
+
     dm_features = [create_dm_features(parse_data(x), time=True) for x in dm]
     acc_features = [create_acc_features(parse_data(x), time=True) for x in acc]
     loc_features = [create_loc_features(parse_data(x), location_categories, time=True) for x in loc]
@@ -201,4 +205,5 @@ def parse_full_data(window, location_categories=None):
     # Skip for now? TODO
     # resp_features = [parse_response_vector(x, time=True) for x in resp]
 
-    return dm_features, acc_features, loc_features
+    return dm_features, acc_features, loc_features, \
+        dm_epochs, acc_epochs, loc_epochs

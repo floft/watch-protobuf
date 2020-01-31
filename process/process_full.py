@@ -83,28 +83,41 @@ def process_watch(watch_number):
     x_dms = []
     x_accs = []
     x_locs = []
+    x_dms_epochs = []
+    x_accs_epochs = []
+    x_locs_epochs = []
 
     for window in fullDataIter:
         # Only save window if enough samples in it
         if len(window.dm) > FLAGS.min_samples_per_window:
-            x_dm, x_acc, x_loc = parse_full_data(window, location_categories)
+            x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs, x_loc_epochs \
+                = parse_full_data(window, location_categories)
 
             x_dm = to_numpy_if_not(x_dm)
             x_acc = to_numpy_if_not(x_acc)
             x_loc = to_numpy_if_not(x_loc)
+            x_dm_epochs = to_numpy_if_not(x_dm_epochs)
+            x_acc_epochs = to_numpy_if_not(x_acc_epochs)
+            x_loc_epochs = to_numpy_if_not(x_loc_epochs)
 
             if FLAGS.debug:
-                print("x shapes:", x_dm.shape, x_acc.shape, x_loc.shape)
+                print("x shapes:", x_dm.shape, x_acc.shape, x_loc.shape,
+                    x_dm_epochs.shape, x_acc_epochs.shape, x_loc_epochs.shape)
 
             if FLAGS.split:
                 x_dms.append(x_dm)
                 x_accs.append(x_acc)
                 x_locs.append(x_loc)
+                x_dms_epochs.append(x_dm_epochs)
+                x_accs_epochs.append(x_acc_epochs)
+                x_locs_epochs.append(x_loc_epochs)
             else:
-                writer.write_window(x_dm, x_acc, x_loc)
+                writer.write_window(x_dm, x_acc, x_loc,
+                    x_dm_epochs, x_acc_epochs, x_loc_epochs)
 
     if FLAGS.split:
-        writer.write_records(x_dms, x_accs, x_locs)
+        writer.write_records(x_dms, x_accs, x_locs, x_dms_epochs, x_accs_epochs,
+            x_locs_epochs)
 
     # Debugging
     print("Watch%03d"%watch_number + ": location categories:",

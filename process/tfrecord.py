@@ -46,16 +46,22 @@ class FullTFRecord:
             self.writer = tf.data.experimental.TFRecordWriter(filename,
                 compression_type="GZIP")
 
-    def create_tf_example_full(self, x_dm, x_acc, x_loc):
+    def create_tf_example_full(self, x_dm, x_acc, x_loc, x_dm_epochs,
+            x_acc_epochs, x_loc_epochs):
         tf_example = tf.train.Example(features=tf.train.Features(feature={
             'x_dm': _bytes_feature(tf.io.serialize_tensor(x_dm)),
             'x_acc': _bytes_feature(tf.io.serialize_tensor(x_acc)),
             'x_loc': _bytes_feature(tf.io.serialize_tensor(x_loc)),
+
+            'x_dm_epochs': _bytes_feature(tf.io.serialize_tensor(x_dm_epochs)),
+            'x_acc_epochs': _bytes_feature(tf.io.serialize_tensor(x_acc_epochs)),
+            'x_loc_epochs': _bytes_feature(tf.io.serialize_tensor(x_loc_epochs)),
         }))
         return tf_example
 
-    def write(self, x_dm, x_acc, x_loc):
-        tf_example = self.create_tf_example_full(x_dm, x_acc, x_loc)
+    def write(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs, x_loc_epochs):
+        tf_example = self.create_tf_example_full(x_dm, x_acc, x_loc,
+            x_dm_epochs, x_acc_epochs, x_loc_epochs)
         self.writer.write(tf_example.SerializeToString())
 
     def close(self):
@@ -97,6 +103,11 @@ def load_tfrecords(filenames, batch_size=None):
         'x_dm': tf.io.FixedLenFeature([], tf.string),
         'x_acc': tf.io.FixedLenFeature([], tf.string),
         'x_loc': tf.io.FixedLenFeature([], tf.string),
+
+        'x_dm_epochs': tf.io.FixedLenFeature([], tf.string),
+        'x_acc_epochs': tf.io.FixedLenFeature([], tf.string),
+        'x_loc_epochs': tf.io.FixedLenFeature([], tf.string),
+
         # 'y': tf.io.FixedLenFeature([], tf.string),
     }
 
@@ -106,8 +117,13 @@ def load_tfrecords(filenames, batch_size=None):
         x_dm = tf.io.parse_tensor(parsed["x_dm"], tf.float32)
         x_acc = tf.io.parse_tensor(parsed["x_acc"], tf.float32)
         x_loc = tf.io.parse_tensor(parsed["x_loc"], tf.float32)
+
+        x_dm_epochs = tf.io.parse_tensor(parsed["x_dm_epochs"], tf.float32)
+        x_acc_epochs = tf.io.parse_tensor(parsed["x_acc_epochs"], tf.float32)
+        x_loc_epochs = tf.io.parse_tensor(parsed["x_loc_epochs"], tf.float32)
+
         # y = tf.io.parse_tensor(parsed["y"], tf.float32)
-        return x_dm, x_acc, x_loc
+        return x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs, x_loc_epochs
 
     files = tf.data.Dataset.from_tensor_slices(filenames)
     dataset = files.interleave(
