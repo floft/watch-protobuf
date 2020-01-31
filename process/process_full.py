@@ -39,8 +39,8 @@ flags.DEFINE_integer("downsample", 10, "Take every x'th accelerometer and device
 flags.DEFINE_boolean("split", True, "Split and normalize now rather than in process_full2.py")
 
 # Note: be sure to change these if you change time_window_size and downsample above
-flags.DEFINE_integer("max_dm_length", 300, "If split -- max device motion time series length (if less than true max, time series is truncated; 0 = max length of data)")
-flags.DEFINE_integer("max_acc_length", 300, "If split -- max accelerometer time series length (if less than true max, time series is truncated; 0 = max length of data)")
+flags.DEFINE_integer("max_dm_length", 128, "If split -- max device motion time series length (if less than true max, time series is truncated; 0 = max length of data)")
+flags.DEFINE_integer("max_acc_length", 128, "If split -- max accelerometer time series length (if less than true max, time series is truncated; 0 = max length of data)")
 flags.DEFINE_integer("max_loc_length", 1, "If split -- max location time series length (if less than true max, time series is truncated; 0 = max length of data)")
 
 flags.DEFINE_boolean("debug", False, "Print debug information (use to inform setting --max_{dm,acc,loc}_length=...)")
