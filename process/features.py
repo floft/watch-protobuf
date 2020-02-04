@@ -95,7 +95,7 @@ def create_acc_features(acc, time=False):
     ]
 
 
-def create_loc_features(loc, location_categories=None, time=False):
+def create_loc_features(loc, location_categories=None, time=False, one_hot=True):
     """ Raw data followed by location category/type features
 
     Reverse geocoded location - one-hot encoded, e.g. if we had 3 categories:
@@ -114,37 +114,53 @@ def create_loc_features(loc, location_categories=None, time=False):
     # instead add the category/type reverse geocode information.
     # Throw out heading - I think that's from the magnetometer, which we don't
     # have on this watch.
-    raw_loc_features = [
-        #loc["longitude"] if loc is not None else None,
-        #loc["latitude"] if loc is not None else None,
-        #loc["horizontal_accuracy"] if loc is not None else None,
-        loc["altitude"] if loc is not None else None,
-        #loc["vertical_accuracy"] if loc is not None else None,
-        loc["course"] if loc is not None else None,
-        loc["speed"] if loc is not None else None,
-        #loc["floor"] if loc is not None else None,
-    ]
+    if one_hot:
+        raw_loc_features = [
+            #loc["longitude"] if loc is not None else None,
+            #loc["latitude"] if loc is not None else None,
+            #loc["horizontal_accuracy"] if loc is not None else None,
+            loc["altitude"] if loc is not None else None,
+            #loc["vertical_accuracy"] if loc is not None else None,
+            loc["course"] if loc is not None else None,
+            loc["speed"] if loc is not None else None,
+            #loc["floor"] if loc is not None else None,
+        ]
 
-    # Default location to an additional "other" type of location. If we can
-    # do the reverse lookup, it'll instead fill in the appropriate category/type
-    location_category_features = [0]*len(categories) + [1]
-    location_type_features = [0]*len(types) + [1]
+        # Default location to an additional "other" type of location. If we can
+        # do the reverse lookup, it'll instead fill in the appropriate category/type
+        location_category_features = [0]*len(categories) + [1]
+        location_type_features = [0]*len(types) + [1]
 
-    if loc is not None:
-        location = reverse_geocode(loc["latitude"], loc["longitude"])
+        if loc is not None:
+            location = reverse_geocode(loc["latitude"], loc["longitude"])
 
-        if location is not None:
-            location_category_features = one_hot_location(categories,
-                location["category"])
-            location_type_features = one_hot_location(types,
-                location["type"])
+            if location is not None:
+                location_category_features = one_hot_location(categories,
+                    location["category"])
+                location_type_features = one_hot_location(types,
+                    location["type"])
 
-            # Keep track of how many there were of each
-            if location_categories is not None:
-                location_categories[(location["category"], location["type"])] += 1
+                # Keep track of how many there were of each
+                if location_categories is not None:
+                    location_categories[(location["category"], location["type"])] += 1
 
-            #print("found", location["category"], location["type"], "for",
-            #    str(loc["latitude"])+", "+str(loc["longitude"]))
+                #print("found", location["category"], location["type"], "for",
+                #    str(loc["latitude"])+", "+str(loc["longitude"]))
+
+    # Raw data
+    else:
+        raw_loc_features = [
+            loc["longitude"] if loc is not None else None,
+            loc["latitude"] if loc is not None else None,
+            loc["horizontal_accuracy"] if loc is not None else None,
+            loc["altitude"] if loc is not None else None,
+            loc["vertical_accuracy"] if loc is not None else None,
+            loc["course"] if loc is not None else None,
+            loc["speed"] if loc is not None else None,
+            loc["floor"] if loc is not None else None,
+        ]
+        location_category_features = []
+        location_type_features = []
 
     return time_features + raw_loc_features + location_category_features \
         + location_type_features
@@ -198,9 +214,10 @@ def parse_full_data(window, location_categories=None):
     acc_epochs = [x.epoch for x in acc]
     loc_epochs = [x.epoch for x in loc]
 
-    dm_features = [create_dm_features(parse_data(x), time=True) for x in dm]
-    acc_features = [create_acc_features(parse_data(x), time=True) for x in acc]
-    loc_features = [create_loc_features(parse_data(x), location_categories, time=True) for x in loc]
+    dm_features = [create_dm_features(parse_data(x), time=False) for x in dm]
+    acc_features = [create_acc_features(parse_data(x), time=False) for x in acc]
+    loc_features = [create_loc_features(parse_data(x), location_categories,
+        time=False, one_hot=False) for x in loc]
 
     # Skip for now? TODO
     # resp_features = [parse_response_vector(x, time=True) for x in resp]
