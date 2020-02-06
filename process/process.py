@@ -97,7 +97,7 @@ def process_watch(watch_number):
                 break
 
         # Save this window if we have data for it
-        y = parse_response_vector(resp)
+        y = parse_response_vector(resp, include_other=False)
 
         if len(x) > 0:
             if FLAGS.debug:
@@ -115,11 +115,7 @@ def process_watch(watch_number):
 
     # Output
     if FLAGS.output == "tfrecord":
-        # Write both including the other class and not including it
-        writer = TFRecordWriter(watch_number, include_other=True)
-        writer.write_records(windows)
-
-        writer = TFRecordWriter(watch_number, include_other=False)
+        writer = TFRecordWriter(watch_number)
         writer.write_records(windows)
     elif FLAGS.output == "csv":
         writer = CSVWriter(watch_number)

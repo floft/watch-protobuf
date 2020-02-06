@@ -17,23 +17,9 @@ FLAGS = flags.FLAGS
 
 
 class WriterBase:
-    def __init__(self, watch_number, include_other=True):
+    def __init__(self, watch_number):
         self.watch_number = watch_number
-        self.include_other = include_other
-
-        # For the summer experiment, TODO put this somewhere else
-        if self.include_other:
-            self.filename_prefix = "watch_"+str(watch_number)
-            self.class_labels = [
-                "Cook", "Eat", "Hygiene", "Work", "Exercise", "Travel", "Other",
-            ]
-            self.num_classes = len(self.class_labels)
-        else:
-            self.filename_prefix = "watch_noother_"+str(watch_number)
-            self.class_labels = [
-                "Cook", "Eat", "Hygiene", "Work", "Exercise", "Travel",
-            ]
-            self.num_classes = len(self.class_labels)
+        self.filename_prefix = "watch_noother_"+str(watch_number)
 
     def train_test_split(self, x, y, test_percent=0.2, random_state=42):
         """
@@ -47,21 +33,26 @@ class WriterBase:
             stratify=y, random_state=random_state)
         return x_train, y_train, x_test, y_test
 
-    def train_test_split_xs(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
-            x_loc_epochs, test_percent=0.2, random_state=42):
+    def train_test_split_xs(self, x_dm, x_acc, x_loc, resp, x_dm_epochs,
+            x_acc_epochs, x_loc_epochs, resp_epochs, test_percent=0.2, random_state=42):
         x_dm_train, x_dm_test, \
             x_acc_train, x_acc_test, \
             x_loc_train, x_loc_test, \
+            resp_train, resp_test, \
             x_dm_epochs_train, x_dm_epochs_test, \
             x_acc_epochs_train, x_acc_epochs_test, \
-            x_loc_epochs_train, x_loc_epochs_test = \
-            train_test_split(x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
-                x_loc_epochs, test_size=test_percent, random_state=random_state)
+            x_loc_epochs_train, x_loc_epochs_test, \
+            resp_epochs_train, resp_epochs_test = \
+            train_test_split(x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
+                x_loc_epochs, resp_epochs,
+                test_size=test_percent, random_state=random_state)
 
-        return x_dm_train, x_acc_train, x_loc_train, \
+        return x_dm_train, x_acc_train, x_loc_train, resp_train, \
             x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, \
-            x_dm_test, x_acc_test, x_loc_test, \
-            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test
+            resp_epochs_train, \
+            x_dm_test, x_acc_test, x_loc_test, resp_test, \
+            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test, \
+            resp_epochs_test
 
     def valid_split(self, data, labels, seed=None, validation_size=1000):
         """ (Stratified) split training data into train/valid as is commonly done,
@@ -80,16 +71,18 @@ class WriterBase:
 
         return x_valid, y_valid, x_train, y_train
 
-    def valid_split_xs(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
-            x_loc_epochs, seed=None, validation_size=1000):
+    def valid_split_xs(self, x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs, resp_epochs, seed=None, validation_size=1000):
         """ (Stratified) split training data into train/valid as is commonly done,
         taking 1000 random (stratified) (labeled, even if target domain) samples for
         a validation set """
         assert len(x_dm) == len(x_acc)
         assert len(x_dm) == len(x_loc)
+        assert len(x_dm) == len(resp)
         assert len(x_dm) == len(x_dm_epochs)
         assert len(x_dm) == len(x_acc_epochs)
         assert len(x_dm) == len(x_loc_epochs)
+        assert len(x_dm) == len(resp_epochs)
 
         percentage_size = int(0.2*len(x_dm))
         if percentage_size > validation_size:
@@ -101,16 +94,20 @@ class WriterBase:
         x_dm_train, x_dm_valid, \
             x_acc_train, x_acc_valid, \
             x_loc_train, x_loc_valid, \
+            resp_train, resp_valid, \
             x_dm_epochs_train, x_dm_epochs_valid, \
             x_acc_epochs_train, x_acc_epochs_valid, \
-            x_loc_epochs_train, x_loc_epochs_valid = \
-            train_test_split(x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
-                x_loc_epochs, test_size=test_size, random_state=seed)
+            x_loc_epochs_train, x_loc_epochs_valid, \
+            resp_epochs_train, resp_epochs_valid = \
+            train_test_split(x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
+                x_loc_epochs, resp_epochs, test_size=test_size, random_state=seed)
 
-        return x_dm_train, x_acc_train, x_loc_train, \
+        return x_dm_train, x_acc_train, x_loc_train, resp_train, \
             x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, \
-            x_dm_valid, x_acc_valid, x_loc_valid, \
-            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid
+            resp_epochs_train, \
+            x_dm_valid, x_acc_valid, x_loc_valid, resp_valid, \
+            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid, \
+            resp_epochs_valid
 
     def create_windows_x(self, x, window_size, overlap):
         """
@@ -201,14 +198,6 @@ class WriterBase:
 
         return train_data, valid_data, test_data
 
-    def label_to_int(self, label_name):
-        """ e.g. Bathe to 0 """
-        return self.class_labels.index(label_name)
-
-    def int_to_label(self, label_index):
-        """ e.g. Bathe to 0 """
-        return self.class_labels[label_index]
-
 
 class TFRecordWriter(WriterBase):
     def __init__(self, watch_number,
@@ -228,12 +217,9 @@ class TFRecordWriter(WriterBase):
             x = np.array(x, dtype=np.float32)
             x[np.isnan(x)] = 0.0
 
-            # If desired, skip the other class
-            if not self.include_other and y == "Other":
+            # Other is mapped to "None", so skip it
+            if y is None:
                 continue
-
-            # Convert label to integer
-            y = self.label_to_int(y)
 
             # Split into windows
             x_windows = self.create_windows_x(x, self.window_size, self.window_overlap)
@@ -343,17 +329,19 @@ class TFRecordWriterFullData(WriterBase):
 
         return to_numpy_if_not(x)
 
-    def write_window(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
-            x_loc_epochs):
+    def write_window(self, x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs, resp_epochs):
         x_dm = self.clean(x_dm)
         x_acc = self.clean(x_acc)
         x_loc = self.clean(x_loc)
+        resp = self.clean(resp)
         x_dm_epochs = self.clean(x_dm_epochs)
         x_acc_epochs = self.clean(x_acc_epochs)
         x_loc_epochs = self.clean(x_loc_epochs)
+        resp_epochs = self.clean(resp_epochs)
 
-        self.record_writer.write(x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
-            x_loc_epochs)
+        self.record_writer.write(x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs, resp_epochs)
 
     def close(self):
         self.record_writer.close()
@@ -361,9 +349,12 @@ class TFRecordWriterFullData(WriterBase):
 
 class TFRecordWriterFullData2(WriterBase):
     """ Write normalized train/valid/test full data -- part 2 """
-    def __init__(self, watch_number, normalization="meanstd", **kwargs):
+    def __init__(self, watch_number, prefix="watch_raw",
+            normalization="meanstd", **kwargs):
         super().__init__(watch_number, **kwargs)
         self.normalization = normalization
+        # Replace the one in WriterBase
+        self.filename_prefix = prefix+"_"+str(watch_number)
 
     def clean(self, x):
         x = to_numpy_if_not(x)
@@ -373,29 +364,32 @@ class TFRecordWriterFullData2(WriterBase):
 
         return x
 
-    def write(self, filename, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
-            x_loc_epochs):
+    def write(self, filename, x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs, resp_epochs):
         assert len(x_dm) == len(x_acc)
         assert len(x_dm) == len(x_loc)
+        assert len(x_dm) == len(resp)
         assert len(x_dm) == len(x_dm_epochs)
         assert len(x_dm) == len(x_acc_epochs)
         assert len(x_dm) == len(x_loc_epochs)
+        assert len(x_dm) == len(resp_epochs)
 
         record_writer = FullTFRecord(filename)
 
         for i in range(len(x_dm)):
-            # self.record_writer.write(x_dm[i], x_acc[i], x_loc[i])
-
             # Clean data first
             x_dm_cur = self.clean(x_dm[i])
             x_acc_cur = self.clean(x_acc[i])
             x_loc_cur = self.clean(x_loc[i])
+            resp_cur = self.clean(resp[i])
             x_dm_epochs_cur = self.clean(x_dm_epochs[i])
             x_acc_epochs_cur = self.clean(x_acc_epochs[i])
             x_loc_epochs_cur = self.clean(x_loc_epochs[i])
+            resp_epochs_cur = self.clean(resp_epochs[i])
 
-            record_writer.write(x_dm_cur, x_acc_cur, x_loc_cur, x_dm_epochs_cur,
-                x_acc_epochs_cur, x_loc_epochs_cur)
+            record_writer.write(x_dm_cur, x_acc_cur, x_loc_cur, resp_cur,
+                x_dm_epochs_cur, x_acc_epochs_cur, x_loc_epochs_cur,
+                resp_epochs_cur)
 
         record_writer.close()
 
@@ -406,32 +400,38 @@ class TFRecordWriterFullData2(WriterBase):
         """
         # Done on all examples at once
         # Shape of x should be something like: [num_examples, time_steps, features]
+        # or for y's, [num_examples, time_steps]
         return tf.keras.preprocessing.sequence.pad_sequences(
             x, maxlen=maxlen, dtype='float32', padding='post', truncating='pre',
             value=0.0)
 
-    def write_records(self, x_dm, x_acc, x_loc, x_dm_epochs, x_acc_epochs,
-            x_loc_epochs):
+    def write_records(self, x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
+            x_loc_epochs, resp_epochs):
         """ Pass in x_dm = [x_dm1, x_dm2, ...] and similarly x_acc and x_loc """
-        train_filename = tfrecord_filename(self.filename_prefix, "train", raw=True)
-        valid_filename = tfrecord_filename(self.filename_prefix, "valid", raw=True)
-        test_filename = tfrecord_filename(self.filename_prefix, "test", raw=True)
+        train_filename = tfrecord_filename(self.filename_prefix, "train")
+        valid_filename = tfrecord_filename(self.filename_prefix, "valid")
+        test_filename = tfrecord_filename(self.filename_prefix, "test")
 
         # Split into train/test sets
-        x_dm_train, x_acc_train, x_loc_train, \
+        x_dm_train, x_acc_train, x_loc_train, resp_train, \
             x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, \
-            x_dm_test, x_acc_test, x_loc_test, \
-            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test = \
-            self.train_test_split_xs(x_dm, x_acc, x_loc, x_dm_epochs,
-                x_acc_epochs, x_loc_epochs)
+            resp_epochs_train, \
+            x_dm_test, x_acc_test, x_loc_test, resp_test, \
+            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test, \
+            resp_epochs_test = \
+            self.train_test_split_xs(x_dm, x_acc, x_loc, resp, x_dm_epochs,
+                x_acc_epochs, x_loc_epochs, resp_epochs)
 
         # Further split training into train/valid sets
-        x_dm_train, x_acc_train, x_loc_train, \
+        x_dm_train, x_acc_train, x_loc_train, resp_train, \
             x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, \
-            x_dm_valid, x_acc_valid, x_loc_valid, \
-            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid = \
-            self.valid_split_xs(x_dm_train, x_acc_train, x_loc_train,
-                x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, seed=0)
+            resp_epochs_train, \
+            x_dm_valid, x_acc_valid, x_loc_valid, resp_valid, \
+            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid, \
+            resp_epochs_valid = \
+            self.valid_split_xs(x_dm_train, x_acc_train, x_loc_train, resp_train,
+                x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train,
+                resp_epochs_train, seed=0)
 
         # Normalize
         x_dm_train, x_dm_valid, x_dm_test = self.normalize(
@@ -446,6 +446,7 @@ class TFRecordWriterFullData2(WriterBase):
         max_dm_length = FLAGS.max_dm_length
         max_acc_length = FLAGS.max_acc_length
         max_loc_length = FLAGS.max_loc_length
+        max_resp_length = FLAGS.max_resp_length
 
         if max_dm_length == 0:
             max_dm_length = None
@@ -453,6 +454,8 @@ class TFRecordWriterFullData2(WriterBase):
             max_acc_length = None
         if max_loc_length == 0:
             max_loc_length = None
+        if max_resp_length == 0:
+            max_resp_length = None
 
         x_dm_train = self.pad(x_dm_train, max_dm_length)
         x_dm_valid = self.pad(x_dm_valid, max_dm_length)
@@ -463,6 +466,9 @@ class TFRecordWriterFullData2(WriterBase):
         x_loc_train = self.pad(x_loc_train, max_loc_length)
         x_loc_valid = self.pad(x_loc_valid, max_loc_length)
         x_loc_test = self.pad(x_loc_test, max_loc_length)
+        resp_train = self.pad(resp_train, max_resp_length)
+        resp_valid = self.pad(resp_valid, max_resp_length)
+        resp_test = self.pad(resp_test, max_resp_length)
 
         x_dm_epochs_train = self.pad(x_dm_epochs_train, max_dm_length)
         x_dm_epochs_valid = self.pad(x_dm_epochs_valid, max_dm_length)
@@ -473,24 +479,27 @@ class TFRecordWriterFullData2(WriterBase):
         x_loc_epochs_train = self.pad(x_loc_epochs_train, max_loc_length)
         x_loc_epochs_valid = self.pad(x_loc_epochs_valid, max_loc_length)
         x_loc_epochs_test = self.pad(x_loc_epochs_test, max_loc_length)
+        resp_epochs_train = self.pad(resp_epochs_train, max_resp_length)
+        resp_epochs_valid = self.pad(resp_epochs_valid, max_resp_length)
+        resp_epochs_test = self.pad(resp_epochs_test, max_resp_length)
 
-        # TODO remove this -- just checking if it's the 300, 300, 1 like set in
-        # the FLAGS.max_{dm,acc,loc}_length
-        print("Watch", self.watch_number)
+        print("Watch", self.watch_number, "prefix", self.filename_prefix)
         if len(x_dm_train) > 0:
-            print("DM train shape:", x_dm_train[0].shape)
+            print("    DM train shape:", x_dm_train[0].shape)
         if len(x_acc_train) > 0:
-            print("Acc train shape:", x_acc_train[0].shape)
+            print("    Acc train shape:", x_acc_train[0].shape)
         if len(x_loc_train) > 0:
-            print("Loc train shape:", x_loc_train[0].shape)
+            print("    Loc train shape:", x_loc_train[0].shape)
+        if len(resp_train) > 0:
+            print("    Resp train shape:", resp_train[0].shape)
 
         # Saving
-        self.write(train_filename, x_dm_train, x_acc_train, x_loc_train,
-            x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train)
-        self.write(valid_filename, x_dm_valid, x_acc_valid, x_loc_valid,
-            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid)
-        self.write(test_filename, x_dm_test, x_acc_test, x_loc_test,
-            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test)
+        self.write(train_filename, x_dm_train, x_acc_train, x_loc_train, resp_train,
+            x_dm_epochs_train, x_acc_epochs_train, x_loc_epochs_train, resp_epochs_train)
+        self.write(valid_filename, x_dm_valid, x_acc_valid, x_loc_valid, resp_valid,
+            x_dm_epochs_valid, x_acc_epochs_valid, x_loc_epochs_valid, resp_epochs_valid)
+        self.write(test_filename, x_dm_test, x_acc_test, x_loc_test, resp_test,
+            x_dm_epochs_test, x_acc_epochs_test, x_loc_epochs_test, resp_epochs_test)
 
     def close(self):
         pass

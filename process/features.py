@@ -184,17 +184,42 @@ def parse_state_vector(epoch, dm, acc, loc, location_categories=None):
     return time_features + dm_features + acc_features + loc_features
 
 
-def parse_response_vector(resp, time=False):
+def label_to_int(label_name, include_unknown, include_other):
+    """ e.g. Bathe to 0 """
+    class_labels = ["Cook", "Eat", "Hygiene", "Work", "Exercise", "Travel"]
+
+    if include_unknown:  # padded values are 0, so 0 will map to "Unknown"
+        class_labels = ["Unknown"] + class_labels
+    elif label_name == "Unknown":
+        return None
+
+    if include_other:
+        class_labels = class_labels + ["Other"]
+    elif label_name == "Other":
+        # if include_other=False but include_unknown=True, then map other to
+        # unknown, since we check for "unknown" (i.e. 0) to determine if we
+        # skip the label.
+        if include_unknown:
+            label_name = "Unknown"
+        else:
+            return None
+
+    return class_labels.index(label_name)
+
+
+def parse_response_vector(resp, time=False, include_unknown=False,
+        include_other=False):
     resp = parse_response(resp)
+    label = label_to_int(resp["label"], include_unknown, include_other)
 
     # For process_full.py we'll keep the timestamp and label??? TODO
     if time:
         time_features = create_time_features(resp["epoch"])
-        return time_features + [resp["label"]]
+        return time_features + [label]
 
     # For process.py, we want an int, not a vector
     else:
-        return resp["label"]
+        return label
 
 
 def parse_full_data(window, location_categories=None):
@@ -203,24 +228,26 @@ def parse_full_data(window, location_categories=None):
     dm = window.dm
     acc = window.acc
     loc = window.loc
-    # resp = window.resp
+    resp = window.resp
 
     assert dm is not None
     assert acc is not None
     assert loc is not None
-    # assert resp is not None
+    assert resp is not None
 
     dm_epochs = [x.epoch for x in dm]
     acc_epochs = [x.epoch for x in acc]
     loc_epochs = [x.epoch for x in loc]
+    resp_epochs = [x.epoch for x in resp]
 
     dm_features = [create_dm_features(parse_data(x), time=False) for x in dm]
     acc_features = [create_acc_features(parse_data(x), time=False) for x in acc]
     loc_features = [create_loc_features(parse_data(x), location_categories,
         time=False, one_hot=False) for x in loc]
 
-    # Skip for now? TODO
-    # resp_features = [parse_response_vector(x, time=True) for x in resp]
+    # Note: Other replaced with Unknown, and we ignore Unknown labels
+    resp_features = [parse_response_vector(x, time=False, include_unknown=True,
+        include_other=False) for x in resp]
 
-    return dm_features, acc_features, loc_features, \
-        dm_epochs, acc_epochs, loc_epochs
+    return dm_features, acc_features, loc_features, resp_features, \
+        dm_epochs, acc_epochs, loc_epochs, resp_epochs
