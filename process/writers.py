@@ -349,12 +349,18 @@ class TFRecordWriterFullData(WriterBase):
 
 class TFRecordWriterFullData2(WriterBase):
     """ Write normalized train/valid/test full data -- part 2 """
-    def __init__(self, watch_number, prefix="watch_raw",
+    def __init__(self, watch_number, prefix="watch_raw", postfix="",
             normalization="meanstd", **kwargs):
         super().__init__(watch_number, **kwargs)
         self.normalization = normalization
-        # Replace the one in WriterBase
-        self.filename_prefix = prefix+"_"+str(watch_number)
+
+        # Replace the filename prefix in WriterBase
+        if prefix != "":
+            prefix = prefix + "_"
+        if postfix != "":
+            postfix = "_" + postfix
+
+        self.filename_prefix = prefix + str(watch_number) + postfix
 
     def clean(self, x):
         x = to_numpy_if_not(x)

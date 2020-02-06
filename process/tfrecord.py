@@ -73,22 +73,13 @@ class FullTFRecord:
             self.writer.close()
 
 
-def tfrecord_filename(dataset_name, train_or_test, raw=False):
+def tfrecord_filename(dataset_name, postfix):
     """
     Version of tfrecord_filename ignoring the pairs and just creating a
     separate file for each domain. This works if there's no changes in the
     data based on the pairing (e.g. no resizing to match image dimensions)
     """
-    # Sanity checks
-    assert train_or_test in ["train", "valid", "test"], \
-        "train_or_test must be train, valid, or test"
-
-    if raw:
-        filename = "%s_raw_%s.tfrecord"%(dataset_name, train_or_test)
-    else:
-        filename = "%s_%s.tfrecord"%(dataset_name, train_or_test)
-
-    return filename
+    return "%s_%s.tfrecord"%(dataset_name, postfix)
 
 
 def tfrecord_filename_full(prefix):

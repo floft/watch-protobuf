@@ -96,9 +96,9 @@ def process_watch(watch_number):
     # Note: if doing this, requires more memory (e.g. maybe downsample first)
     if FLAGS.split:
         labeled_writer = TFRecordWriterFullData2(watch_number,
-            prefix="watch_raw_labeled")
+            postfix="labeled")
         unlabeled_writer = TFRecordWriterFullData2(watch_number,
-            prefix="watch_raw_unlabeled")
+            postfix="unlabeled")
     else:
         writer = TFRecordWriterFullData(watch_number)
 
