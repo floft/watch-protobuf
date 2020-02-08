@@ -311,44 +311,7 @@ class CSVWriter(WriterBase):
 
 
 class TFRecordWriterFullData(WriterBase):
-    """ Write raw full data -- part 1 """
-    def __init__(self, watch_number, **kwargs):
-        super().__init__(watch_number, **kwargs)
-        filename = tfrecord_filename_full(self.filename_prefix)
-        self.record_writer = FullTFRecord(filename)
-
-    def clean(self, x):
-        # # Create a numpy array and convert None values to 0
-        # x = np.array(x, dtype=np.float32)
-        # x[np.isnan(x)] = 0.0
-
-        # We can clean it later if we want... for now just convert to numpy
-        # x = np.array(x, dtype=np.float32)
-
-        # return x
-
-        return to_numpy_if_not(x)
-
-    def write_window(self, x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
-            x_loc_epochs, resp_epochs):
-        x_dm = self.clean(x_dm)
-        x_acc = self.clean(x_acc)
-        x_loc = self.clean(x_loc)
-        resp = self.clean(resp)
-        x_dm_epochs = self.clean(x_dm_epochs)
-        x_acc_epochs = self.clean(x_acc_epochs)
-        x_loc_epochs = self.clean(x_loc_epochs)
-        resp_epochs = self.clean(resp_epochs)
-
-        self.record_writer.write(x_dm, x_acc, x_loc, resp, x_dm_epochs, x_acc_epochs,
-            x_loc_epochs, resp_epochs)
-
-    def close(self):
-        self.record_writer.close()
-
-
-class TFRecordWriterFullData2(WriterBase):
-    """ Write normalized train/valid/test full data -- part 2 """
+    """ Write normalized train/valid/test full data """
     def __init__(self, watch_number, prefix="watch_raw", postfix="",
             normalization="meanstd", **kwargs):
         super().__init__(watch_number, **kwargs)

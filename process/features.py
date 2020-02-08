@@ -212,7 +212,6 @@ def parse_response_vector(resp, time=False, include_unknown=False,
     resp = parse_response(resp)
     label = label_to_int(resp["label"], include_unknown, include_other)
 
-    # For process_full.py we'll keep the timestamp and label??? TODO
     if time:
         time_features = create_time_features(resp["epoch"])
         return time_features + [label]
